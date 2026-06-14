@@ -1,0 +1,92 @@
+import Link from 'next/link'
+import { Facebook, Instagram, Youtube } from 'lucide-react'
+import { SITE_CONFIG, FOOTER_LINKS } from '@/lib/constants'
+
+const SOCIAL_ICONS = {
+  Instagram,
+  Facebook,
+  Youtube,
+}
+
+export function Footer() {
+  return (
+    <footer className="border-t border-white/5 bg-navy-950">
+      <div className="max-w-7xl mx-auto px-6 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+          {/* Logo + tagline */}
+          <div className="space-y-3 md:col-span-2">
+            <Link href="/" className="font-display font-bold text-xl text-white">
+              Nuansa<span className="text-brand">Pos</span>
+            </Link>
+            <p className="text-slate-400 text-sm max-w-xs leading-relaxed">
+              {SITE_CONFIG.tagline}. Bekerja 100% offline, data di HP Anda sendiri.
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              {FOOTER_LINKS.social.map((social) => {
+                const Icon = SOCIAL_ICONS[social.icon as keyof typeof SOCIAL_ICONS]
+                return (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={social.label}
+                    className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors duration-150"
+                  >
+                    <Icon size={18} />
+                  </a>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Product links */}
+          <div>
+            <h3 className="text-white font-semibold text-sm mb-4">Produk</h3>
+            <ul className="space-y-2.5">
+              {FOOTER_LINKS.product.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-slate-400 hover:text-white text-sm transition-colors duration-150"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal links */}
+          <div>
+            <h3 className="text-white font-semibold text-sm mb-4">Legal</h3>
+            <ul className="space-y-2.5">
+              {FOOTER_LINKS.legal.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-slate-400 hover:text-white text-sm transition-colors duration-150"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <a
+                  href={`mailto:${SITE_CONFIG.email}`}
+                  className="text-slate-400 hover:text-white text-sm transition-colors duration-150"
+                >
+                  {SITE_CONFIG.email}
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-12 pt-8 border-t border-white/5 text-center text-slate-500 text-sm">
+          © {new Date().getFullYear()} {SITE_CONFIG.name}. Semua hak dilindungi.
+        </div>
+      </div>
+    </footer>
+  )
+}
