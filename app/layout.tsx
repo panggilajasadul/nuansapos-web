@@ -6,7 +6,7 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-jakarta',
   display: 'swap',
-  weight: ['400', '500', '600', '700', '800', '900'],
+  weight: ['400', '500', '600', '700', '800'],
 })
 
 const inter = Inter({
@@ -16,6 +16,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://nuansapos.id'),
   title: 'NuansaPos — Aplikasi POS Android untuk UMKM Indonesia',
   description:
     'Aplikasi kasir Android offline-first untuk 9 jenis bisnis UMKM. Retail, Restaurant, Apotek, Bengkel, Laundry, dan lebih. Mulai gratis, siap pakai 5 menit.',

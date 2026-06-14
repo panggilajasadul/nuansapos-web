@@ -41,7 +41,7 @@ export function Hero() {
           {/* Headline */}
           <motion.h1
             variants={item}
-            className="font-display font-black text-4xl md:text-5xl lg:text-6xl text-white leading-[1.1]"
+            className="font-display font-extrabold text-4xl md:text-5xl lg:text-6xl text-white leading-[1.1]"
           >
             Kasir Android untuk{' '}
             <span className="text-gradient">Semua Bisnis</span>{' '}

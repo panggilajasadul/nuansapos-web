@@ -9,7 +9,7 @@ export function SocialProof() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {STATS.map((stat) => (
             <div key={stat.label} className="text-center space-y-1">
-              <div className="font-display font-black text-3xl md:text-4xl text-white">
+              <div className="font-display font-extrabold text-3xl md:text-4xl text-white">
                 <CountUp
                   end={stat.value}
                   suffix={stat.suffix}

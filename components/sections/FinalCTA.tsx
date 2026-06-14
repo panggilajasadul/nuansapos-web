@@ -14,7 +14,7 @@ export function FinalCTA() {
         <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-brand/20 via-navy-800 to-navy-800 border border-brand/20 px-8 py-16 md:py-20 text-center space-y-6">
           <div className="absolute inset-0 bg-hero-glow pointer-events-none" aria-hidden="true" />
 
-          <h2 className="relative font-display font-black text-3xl md:text-5xl text-white leading-tight">
+          <h2 className="relative font-display font-extrabold text-3xl md:text-5xl text-white leading-tight">
             Siap Tinggalkan Cara Lama?
           </h2>
           <p className="relative text-slate-300 text-lg max-w-xl mx-auto">

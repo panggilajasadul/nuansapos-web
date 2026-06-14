@@ -16,7 +16,7 @@ export default function PrivacyPolicyPage() {
       <Navbar />
       <main className="pt-32 pb-24">
         <div className="max-w-3xl mx-auto px-6 space-y-8">
-          <h1 className="font-display font-black text-3xl md:text-4xl text-white">
+          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-white">
             Kebijakan Privasi
           </h1>
           <p className="text-slate-400 text-sm">Terakhir diperbarui: Juni 2026</p>

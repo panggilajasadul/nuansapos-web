@@ -76,12 +76,12 @@ export function Pricing() {
 
                 <div className="mb-2">
                   {price === 0 ? (
-                    <span className="font-display font-black text-4xl text-emerald-400">
+                    <span className="font-display font-extrabold text-4xl text-emerald-400">
                       GRATIS
                     </span>
                   ) : (
                     <div className="flex items-baseline gap-1">
-                      <span className="font-display font-black text-4xl text-white">
+                      <span className="font-display font-extrabold text-4xl text-white">
                         {formatRupiah(price)}
                       </span>
                       <span className="text-slate-400 text-sm">/bulan</span>
