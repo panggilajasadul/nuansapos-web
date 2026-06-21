@@ -18,9 +18,18 @@ import {
   Building,
   User,
   Menu,
-  X
+  X,
+  Database,
+  Trash2,
+  Lock
 } from 'lucide-react';
-import { logoutAction } from './actions';
+import { 
+  logoutAction, 
+  saveLicenseAction, 
+  listLicensesAction, 
+  resetActivationsAction, 
+  deleteLicenseAction 
+} from './actions';
 
 const SECRET = 'NuansaP0s@2024#Batch24$Offline!';
 const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -79,10 +88,12 @@ async function computeHMACSHA256(secret: string, message: string): Promise<Uint8
 }
 
 export default function AdminDashboardClient() {
-  const [activeTab, setActiveTab] = useState<'generator' | 'decoder'>('generator');
+  const [activeTab, setActiveTab] = useState<'generator' | 'decoder' | 'manager'>('generator');
   
   // Generator State
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activationMode, setActivationMode] = useState<'online' | 'offline'>('online');
+  const [isGeneratingOnline, setIsGeneratingOnline] = useState(false);
   const [deviceId, setDeviceId] = useState('a1b2c3d4e5f6a7b8');
   const [tier, setTier] = useState<TierCode>('PRO');
   const [businessName, setBusinessName] = useState('Nuansa POS | Aplikasi Kasir');
@@ -105,6 +116,12 @@ export default function AdminDashboardClient() {
     message?: string;
   } | null>(null);
 
+  // Manager State (Supabase List)
+  const [licenses, setLicenses] = useState<any[]>([]);
+  const [isLicensesLoading, setIsLicensesLoading] = useState(false);
+  const [licensesError, setLicensesError] = useState<string | null>(null);
+  const [licensesSearch, setLicensesSearch] = useState('');
+
   // Set real-time receipt date on load and key updates
   useEffect(() => {
     const now = new Date();
@@ -112,8 +129,34 @@ export default function AdminDashboardClient() {
     setReceiptDate(formatted);
   }, [licenseKey]);
 
-  // Generate License Key dynamically
+  // Load licenses list when manager tab is open
   useEffect(() => {
+    if (activeTab === 'manager') {
+      fetchLicenses();
+    }
+  }, [activeTab]);
+
+  const fetchLicenses = async () => {
+    setIsLicensesLoading(true);
+    setLicensesError(null);
+    try {
+      const res = await listLicensesAction();
+      if (res.success) {
+        setLicenses(res.data);
+      } else {
+        setLicensesError(res.error);
+      }
+    } catch (err: any) {
+      setLicensesError(err.message || 'Gagal terhubung ke database.');
+    } finally {
+      setIsLicensesLoading(false);
+    }
+  };
+
+  // Generate License Key dynamically for Offline mode only
+  useEffect(() => {
+    if (activationMode !== 'offline') return;
+    
     const generate = async () => {
       if (!deviceId.trim()) {
         setLicenseKey('');
@@ -126,7 +169,75 @@ export default function AdminDashboardClient() {
       setLicenseKey(`NUANSA-${tier}-${token.substring(0, 5)}-${token.substring(5, 10)}-${token.substring(10, 15)}`);
     };
     generate();
-  }, [deviceId, tier]);
+  }, [deviceId, tier, activationMode]);
+
+  // Generate and save License Key for Online mode
+  const handleGenerateOnline = async () => {
+    setIsGeneratingOnline(true);
+    try {
+      // Generate a cryptographically secure random token (Base32 encoded)
+      const array = new Uint8Array(15);
+      window.crypto.getRandomValues(array);
+      let token = '';
+      for (let i = 0; i < 15; i++) {
+        token += ALPHABET[array[i] % ALPHABET.length];
+      }
+
+      const generatedKey = `NUANSA-${tier}-${token.substring(0, 5)}-${token.substring(5, 10)}-${token.substring(10, 15)}`;
+      const maxDevices = tier === 'BSC' ? 1 : 3;
+
+      // Save to Supabase
+      const res = await saveLicenseAction({
+        licenseKey: generatedKey,
+        tier,
+        maxDevices,
+        businessName: businessName.trim(),
+        customerName: customerName.trim(),
+      });
+
+      if (!res.success) {
+        alert('Gagal membuat lisensi online: ' + res.error);
+        return;
+      }
+
+      setLicenseKey(generatedKey);
+    } catch (err: any) {
+      alert('Terjadi kesalahan: ' + err.message);
+    } finally {
+      setIsGeneratingOnline(false);
+    }
+  };
+
+  const handleResetActivations = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin me-reset semua perangkat terdaftar untuk lisensi ini?')) return;
+    try {
+      const res = await resetActivationsAction(id);
+      if (res.success) {
+        alert('Aktivasi perangkat berhasil di-reset!');
+        fetchLicenses();
+      } else {
+        alert('Gagal me-reset: ' + res.error);
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const handleDeleteLicense = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus / mencabut lisensi ini? Semua HP yang telah mengaktifkannya tidak akan bisa memvalidasi ulang.')) return;
+    try {
+      const res = await deleteLicenseAction(id);
+      if (res.success) {
+        alert('Lisensi berhasil dicabut!');
+        fetchLicenses();
+      } else {
+        alert('Gagal menghapus: ' + res.error);
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
 
   // Decoder Logic
   const handleDecode = async () => {
@@ -282,6 +393,17 @@ export default function AdminDashboardClient() {
                 <Search className="w-3.5 h-3.5" />
                 Decoder Lisensi
               </button>
+              <button
+                onClick={() => setActiveTab('manager')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+                  activeTab === 'manager'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5" />
+                Daftar Lisensi (Online)
+              </button>
             </div>
 
             {/* Logout Button */}
@@ -341,6 +463,20 @@ export default function AdminDashboardClient() {
                 <Search className="w-4 h-4" />
                 Decoder Lisensi
               </button>
+              <button
+                onClick={() => {
+                  setActiveTab('manager');
+                  setMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2.5 transition-all ${
+                  activeTab === 'manager'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Database className="w-4 h-4" />
+                Daftar Lisensi (Online)
+              </button>
             </div>
             
             <button
@@ -375,22 +511,71 @@ export default function AdminDashboardClient() {
                   <h2 className="font-display font-semibold text-lg text-slate-900">Buat Lisensi Baru</h2>
                 </div>
 
-                {/* Device ID Input */}
+                {/* Activation Mode Selector */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-700">
-                    ID Perangkat Android (Hex / ANDROID_ID)
-                  </label>
-                  <input
-                    type="text"
-                    value={deviceId}
-                    onChange={(e) => setDeviceId(e.target.value)}
-                    placeholder="Contoh: a1b2c3d4e5f6a7b8"
-                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 transition-all text-sm uppercase"
-                  />
-                  <p className="text-[10px] text-slate-500">
-                    ID Perangkat didapatkan dari menu aktivasi di HP Android pelanggan.
-                  </p>
+                  <label className="text-xs font-semibold text-slate-700 block">Metode Aktivasi</label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivationMode('online');
+                        setLicenseKey(''); // Reset key
+                      }}
+                      className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        activationMode === 'online'
+                          ? 'bg-white text-brand shadow-sm font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Database className="w-3.5 h-3.5" />
+                      Online (Rekomendasi)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivationMode('offline');
+                        setLicenseKey(''); // Reset key
+                      }}
+                      className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                        activationMode === 'offline'
+                          ? 'bg-white text-brand shadow-sm font-bold'
+                          : 'text-slate-650 hover:text-slate-900'
+                      }`}
+                    >
+                      <Cpu className="w-3.5 h-3.5" />
+                      Offline (Manual/Murni)
+                    </button>
+                  </div>
                 </div>
+
+                {/* Device ID Input / Online Info Banner */}
+                {activationMode === 'offline' ? (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-slate-700">
+                      ID Perangkat Android (Hex / ANDROID_ID)
+                    </label>
+                    <input
+                      type="text"
+                      value={deviceId}
+                      onChange={(e) => setDeviceId(e.target.value)}
+                      placeholder="Contoh: a1b2c3d4e5f6a7b8"
+                      className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 transition-all text-sm uppercase"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      ID Perangkat didapatkan dari menu aktivasi di HP Android pelanggan.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-1">
+                    <div className="flex items-center gap-1.5 text-brand text-xs font-bold">
+                      <Lock className="w-3.5 h-3.5" />
+                      Aktivasi Online Terbuka
+                    </div>
+                    <p className="text-[10px] text-slate-600 leading-relaxed">
+                      Kunci lisensi akan dibuat acak tanpa memerlukan ID Perangkat sekarang. Saat pelanggan memasukkan kode ini di HP mereka untuk pertama kali, perangkat mereka akan otomatis terdaftar dan dikunci di database.
+                    </p>
+                  </div>
+                )}
 
                 {/* Tier Selection Card Grid */}
                 <div className="space-y-3">
@@ -400,7 +585,10 @@ export default function AdminDashboardClient() {
                       <button
                         key={key}
                         type="button"
-                        onClick={() => setTier(key)}
+                        onClick={() => {
+                          setTier(key);
+                          if (activationMode === 'online') setLicenseKey(''); // Reset key to force generation on changes
+                        }}
                         className={`border rounded-2xl p-4 flex flex-col items-center justify-center gap-1 transition-all text-center ${
                           tier === key
                             ? 'border-brand bg-brand/5 shadow-sm'
@@ -437,7 +625,7 @@ export default function AdminDashboardClient() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-slate-505" />
+                      <User className="w-3.5 h-3.5 text-slate-550" />
                       Nama Pelanggan
                     </label>
                     <input
@@ -487,52 +675,80 @@ export default function AdminDashboardClient() {
                     Kunci Lisensi Terbuat
                   </span>
                   <div className="text-center font-mono text-sm md:text-base font-bold text-slate-900 tracking-wider py-2 bg-white border border-slate-200 rounded-xl select-all select-none">
-                    {licenseKey || 'MEMBUTUHKAN DEVICE ID'}
+                    {licenseKey || (activationMode === 'online' ? 'KLIK GENERATE DI BAWAH' : 'MEMBUTUHKAN DEVICE ID')}
                   </div>
                 </div>
 
                 {/* Form Buttons */}
-                <div className="flex flex-col md:flex-row gap-3">
+                {activationMode === 'online' && !licenseKey ? (
                   <button
-                    onClick={handleCopy}
-                    disabled={!licenseKey}
-                    className="flex-1 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
+                    onClick={handleGenerateOnline}
+                    disabled={isGeneratingOnline}
+                    className="w-full bg-brand hover:bg-brand-dark text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-brand/20 disabled:opacity-50"
                   >
-                    {copied ? (
-                      <>
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span>Disalin!</span>
-                      </>
+                    {isGeneratingOnline ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Copy className="w-4 h-4 text-slate-500" />
-                        <span>Salin Kunci</span>
+                        <Key className="w-4 h-4" />
+                        <span>Generate & Simpan Lisensi Online</span>
                       </>
                     )}
                   </button>
-                  <button
-                    onClick={handleDownload}
-                    disabled={!licenseKey || isDownloading}
-                    className="flex-1 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
-                  >
-                    {isDownloading ? (
-                      <div className="w-4 h-4 border-2 border-slate-400 border-t-brand rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4 text-slate-500" />
-                        <span>Simpan Gambar</span>
-                      </>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <button
+                        onClick={handleCopy}
+                        disabled={!licenseKey}
+                        className="flex-1 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-4 h-4 text-emerald-600" />
+                            <span>Disalin!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 text-slate-500" />
+                            <span>Salin Kunci</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={handleDownload}
+                        disabled={!licenseKey || isDownloading}
+                        className="flex-1 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
+                      >
+                        {isDownloading ? (
+                          <div className="w-4 h-4 border-2 border-slate-400 border-t-brand rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 text-slate-500" />
+                            <span>Simpan Gambar</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={handlePrint}
+                        disabled={!licenseKey}
+                        className="flex-1 bg-brand hover:bg-brand-dark text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-brand/20 disabled:opacity-50"
+                      >
+                        <Printer className="w-4 h-4" />
+                        <span>Cetak Resi</span>
+                      </button>
+                    </div>
+                    {activationMode === 'online' && licenseKey && (
+                      <button
+                        onClick={() => setLicenseKey('')}
+                        className="w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl py-2 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Generate Lisensi Baru Lagi</span>
+                      </button>
                     )}
-                  </button>
-                  <button
-                    onClick={handlePrint}
-                    disabled={!licenseKey}
-                    className="flex-1 bg-brand hover:bg-brand-dark text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-brand/20 disabled:opacity-50"
-                  >
-                    <Printer className="w-4 h-4" />
-                    <span>Cetak Resi</span>
-                  </button>
-                </div>
+                  </div>
+                )}
               </motion.div>
             </div>
 
@@ -582,7 +798,9 @@ export default function AdminDashboardClient() {
                     </div>
                     <div className="flex justify-between">
                       <span>ID Perangkat:</span>
-                      <span className="font-bold">{deviceId || '-'}</span>
+                      <span className="font-bold">
+                        {activationMode === 'online' ? 'ONLINE (OTOMATIS)' : (deviceId || '-')}
+                      </span>
                     </div>
                   </div>
 
@@ -643,6 +861,106 @@ export default function AdminDashboardClient() {
                     backgroundSize: '10px 10px'
                   }}
                 />
+            </div>
+          </div>
+
+          {/* Dokumentasi/Panduan Ketentuan Sistem Lisensi (Full Width) */}
+            <div className="lg:col-span-12 print:hidden mt-4">
+              <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60">
+                  <ShieldCheck className="w-5 h-5 text-brand" />
+                  <div>
+                    <h3 className="font-display font-semibold text-base text-slate-900">
+                      Panduan & Syarat Ketentuan Sistem Lisensi NuansaPos
+                    </h3>
+                    <p className="text-[10px] text-slate-500">
+                      Informasi penting bagi administrator mengenai cara kerja, pembatasan perangkat, dan keamanan data.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-700 text-xs">
+                  {/* Poin 1 */}
+                  <div className="space-y-2 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                    <span className="text-brand font-bold text-[11px] uppercase block tracking-wider">
+                      1. Deteksi ID Otomatis
+                    </span>
+                    <p className="leading-relaxed text-[11px] text-slate-655">
+                      ID Perangkat Android (<code className="font-mono text-brand bg-brand/5 px-1 rounded text-[10px]">ANDROID_ID</code>) akan terdeteksi secara otomatis 100% di latar belakang saat pelanggan mengklik tombol <strong>&quot;Aktifkan&quot;</strong> di HP mereka.
+                    </p>
+                    <p className="leading-relaxed text-[11px] text-slate-655">
+                      ID tersebut langsung dikirimkan bersama lisensi ke server API Next.js untuk dicatat ke database Supabase. <strong>Pelanggan tidak perlu menyalin atau mengetik ID perangkat mereka sendiri.</strong>
+                    </p>
+                  </div>
+
+                  {/* Poin 2 */}
+                  <div className="space-y-2 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                    <span className="text-brand font-bold text-[11px] uppercase block tracking-wider">
+                      2. Batasan Kuota &amp; Sharing
+                    </span>
+                    <p className="leading-relaxed text-[11px] text-slate-655">
+                      Lisensi dibatasi secara ketat berdasarkan tier paket yang dibeli pelanggan:
+                    </p>
+                    <ul className="list-disc pl-4 space-y-1 text-[10px] text-slate-500">
+                      <li><strong>BASIC (BSC)</strong>: Maksimal <strong>1 HP</strong>. HP berikutnya akan langsung ditolak oleh server.</li>
+                      <li><strong>PRO &amp; PREMIUM (PRO/PRM)</strong>: Maksimal <strong>3 HP</strong>. HP ke-4 akan otomatis diblokir.</li>
+                      <li><strong>Reinstall</strong>: Jika pelanggan menginstal ulang aplikasi pada HP yang sama, kuota perangkat tidak akan bertambah/berkurang karena ID perangkat sudah terdaftar sebelumnya.</li>
+                    </ul>
+                  </div>
+
+                  {/* Poin 3 */}
+                  <div className="space-y-2 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                    <span className="text-brand font-bold text-[11px] uppercase block tracking-wider">
+                      3. Keamanan Online vs Offline
+                    </span>
+                    <p className="leading-relaxed text-[11px] text-slate-655">
+                      <strong>Online (Supabase)</strong> jauh lebih aman secara keseluruhan karena logika pembatasan diatur di sisi server kita (cloud) dan tidak bisa diretas dari HP pembeli.
+                    </p>
+                    <p className="leading-relaxed text-[11px] text-slate-655">
+                      <strong>Offline (Cadangan)</strong> tetap disediakan sebagai backup darurat jika pembeli menggunakan HP kasir jadul yang sama sekali tidak memiliki koneksi internet.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Perbandingan Detail Table */}
+                <div className="border border-slate-200/60 rounded-2xl overflow-hidden bg-white text-xs">
+                  <div className="bg-slate-50 py-2.5 px-4 font-bold text-slate-800 border-b border-slate-200/60 flex items-center gap-1.5">
+                    Tabel Perbandingan Metode Lisensi
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-[11px]">
+                      <thead>
+                        <tr className="bg-slate-50/30 border-b border-slate-200/60 text-slate-500">
+                          <th className="py-2 px-4 font-semibold">Fitur / Parameter</th>
+                          <th className="py-2 px-4 font-semibold text-brand">Metode Online (Supabase)</th>
+                          <th className="py-2 px-4 font-semibold text-slate-600">Metode Manual (Offline)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        <tr>
+                          <td className="py-2.5 px-4 font-semibold text-slate-800">Keamanan dari Pembajakan</td>
+                          <td className="py-2.5 px-4 text-slate-600"><strong>Sangat Aman (Sempurna)</strong>. Kontrol kuota ada di database server kita yang tidak bisa diakses/diubah oleh pelanggan.</td>
+                          <td className="py-2.5 px-4 text-slate-600"><strong>Cukup Aman</strong>, tetapi jika pembajak berhasil membongkar file APK dan menemukan Kunci Rahasia, mereka bisa membuat generator kunci palsu sendiri.</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2.5 px-4 font-semibold text-slate-800">Kemudahan Penggunaan (UX)</td>
+                          <td className="py-2.5 px-4 text-slate-600"><strong>Sangat Praktis</strong>. Pembeli cukup memasukkan lisensi, semuanya beres otomatis.</td>
+                          <td className="py-2.5 px-4 text-slate-600"><strong>Merepotkan</strong>. Pembeli harus mencari ID perangkat, mengirimkannya ke admin, lalu admin men-generate kunci khusus untuk HP tersebut.</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2.5 px-4 font-semibold text-slate-800">Ketergantungan Internet</td>
+                          <td className="py-2.5 px-4 text-slate-600">Butuh internet <strong>hanya 1x saat aktivasi pertama</strong>. Setelah aktif, aplikasi berjalan 100% offline selamanya.</td>
+                          <td className="py-2.5 px-4 text-slate-600"><strong>100% Offline</strong> sejak awal, tidak butuh koneksi internet sama sekali.</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2.5 px-4 font-semibold text-slate-800">Kontrol Admin</td>
+                          <td className="py-2.5 px-4 text-slate-600"><strong>Penuh</strong>. Kakak bisa membatalkan lisensi atau me-reset kuota (jika pembeli ganti HP baru) langsung dari Web Dashboard.</td>
+                          <td className="py-2.5 px-4 text-slate-600"><strong>Tidak ada</strong>. Sekali kunci offline diberikan, lisensi tersebut aktif selamanya di HP tersebut dan tidak bisa dicabut/diubah dari jauh.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </>
@@ -750,6 +1068,207 @@ export default function AdminDashboardClient() {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </motion.div>
+          </div>
+        )}
+
+        {/* TAB 3: DAFTAR LISENSI ONLINE */}
+        {activeTab === 'manager' && (
+          <div className="lg:col-span-12 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-6 space-y-6"
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200/60">
+                <div className="flex items-center gap-3">
+                  <Database className="w-5 h-5 text-brand" />
+                  <div>
+                    <h2 className="font-display font-semibold text-lg text-slate-900">Kelola Lisensi Online</h2>
+                    <p className="text-[11px] text-slate-500">Mencatat, membatasi, dan mengelola perangkat terdaftar.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Cari lisensi, toko, pelanggan..."
+                      value={licensesSearch}
+                      onChange={(e) => setLicensesSearch(e.target.value)}
+                      className="bg-slate-100 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-brand w-64 text-slate-800"
+                    />
+                  </div>
+                  <button
+                    onClick={fetchLicenses}
+                    className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
+                    title="Segarkan data"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-slate-650 ${isLicensesLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {licensesError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl flex items-start gap-3">
+                  <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-650" />
+                  <div>
+                    <p className="font-bold text-sm">Gagal memuat lisensi</p>
+                    <p className="text-xs leading-relaxed text-slate-705">{licensesError}</p>
+                  </div>
+                </div>
+              )}
+
+              {isLicensesLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-500">
+                  <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" />
+                  <span className="text-xs">Memuat data dari database Supabase...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Filtered licenses list */}
+                  {(() => {
+                    const filtered = licenses.filter((lic) => {
+                      const search = licensesSearch.toLowerCase();
+                      return (
+                        lic.licenseKey.toLowerCase().includes(search) ||
+                        lic.businessName.toLowerCase().includes(search) ||
+                        lic.customerName.toLowerCase().includes(search) ||
+                        lic.tier.toLowerCase().includes(search)
+                      );
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center py-12 space-y-2 text-slate-400">
+                          <Database className="w-12 h-12 mx-auto text-slate-350 stroke-1" />
+                          <p className="text-sm font-semibold">Tidak ada lisensi ditemukan</p>
+                          <p className="text-xs max-w-xs mx-auto">
+                            {licensesSearch 
+                              ? 'Silakan coba masukkan kata kunci pencarian yang lain.' 
+                              : 'Silakan masuk ke tab Generator untuk mencetak dan mendaftarkan lisensi pertama Anda.'}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filtered.map((lic) => (
+                          <div 
+                            key={lic.id} 
+                            className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:shadow-md transition-all space-y-4 flex flex-col justify-between"
+                          >
+                            <div className="space-y-3">
+                              {/* Header Card */}
+                              <div className="flex items-start justify-between">
+                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${
+                                  lic.tier === 'BSC' 
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-100' 
+                                    : lic.tier === 'PRO' 
+                                      ? 'bg-purple-50 text-purple-700 border border-purple-100'
+                                      : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                }`}>
+                                  {lic.tier === 'BSC' ? 'Basic' : lic.tier === 'PRO' ? 'Pro Suite' : 'Premium'}
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  {new Date(lic.createdAt).toLocaleDateString('id-ID', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+
+                              {/* License Key Code */}
+                              <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl py-2 px-3 font-mono text-xs text-slate-800">
+                                <span className="font-bold select-all tracking-wide">{lic.licenseKey}</span>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(lic.licenseKey);
+                                    alert('Kunci lisensi berhasil disalin!');
+                                  }}
+                                  className="text-slate-400 hover:text-slate-650 p-1"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              {/* Metadata */}
+                              <div className="grid grid-cols-2 gap-2 text-xs leading-normal">
+                                <div>
+                                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Nama Toko</span>
+                                  <span className="text-slate-800 font-semibold">{lic.businessName || '-'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Pelanggan</span>
+                                  <span className="text-slate-800 font-semibold">{lic.customerName || '-'}</span>
+                                </div>
+                              </div>
+
+                              {/* Activation Tracker */}
+                              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                                <div className="flex justify-between text-xs font-semibold text-slate-700">
+                                  <span>Perangkat Aktif:</span>
+                                  <span>{lic.activatedDevicesCount} / {lic.maxDevices} HP</span>
+                                </div>
+                                {/* Bar */}
+                                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all ${
+                                      lic.activatedDevicesCount >= lic.maxDevices 
+                                        ? 'bg-amber-500' 
+                                        : 'bg-brand'
+                                    }`}
+                                    style={{ width: `${Math.min(100, (lic.activatedDevicesCount / lic.maxDevices) * 100)}%` }}
+                                  />
+                                </div>
+
+                                {/* Active Device ID List */}
+                                {lic.devices.length > 0 && (
+                                  <div className="bg-slate-50/70 rounded-xl p-2.5 mt-2 space-y-1 text-[10px] font-mono text-slate-600 border border-slate-100">
+                                    <span className="text-[9px] uppercase font-bold text-slate-500 block mb-1">Daftar ID Perangkat:</span>
+                                    {lic.devices.map((dev: any) => (
+                                      <div key={dev.deviceId} className="flex justify-between border-b border-slate-100/50 last:border-0 py-0.5">
+                                        <span className="font-semibold text-slate-700">{dev.deviceId}</span>
+                                        <span className="text-[8px] text-slate-400">
+                                          {new Date(dev.activatedAt).toLocaleDateString('id-ID', {
+                                            month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                                          })}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Actions Footer */}
+                            <div className="flex gap-2 pt-4 border-t border-slate-100/80">
+                              <button
+                                onClick={() => handleResetActivations(lic.id)}
+                                disabled={lic.activatedDevicesCount === 0}
+                                className="flex-1 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-750 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                                Reset Perangkat
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLicense(lic.id)}
+                                className="p-2 border border-red-200 hover:border-red-300 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition-colors"
+                                title="Cabut/Hapus Lisensi"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </motion.div>
           </div>
         )}
