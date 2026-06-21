@@ -84,3 +84,64 @@
     display: none;
   }
 }
+
+/* PRINT STYLES - Crucial for 100mm x 150mm label printing */
+@media print {
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Hide main web app components in print */
+  header, 
+  main > :not(.lg\:col-span-5), 
+  h3, 
+  footer {
+    display: none !important;
+  }
+
+  /* Position the receipt strictly for printing */
+  main {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+  }
+
+  .lg\:col-span-5 {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #receipt-paper {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 10px 5px !important;
+    width: 100mm !important;
+    height: 150mm !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+  
+  #receipt-paper::before, 
+  #receipt-paper::after {
+    display: none !important;
+  }
+
+  @page {
+    size: 100mm 150mm;
+    margin: 0mm;
+  }
+}
+
