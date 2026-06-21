@@ -12,13 +12,13 @@ export function BusinessTabs() {
   const activeBusiness = BUSINESS_TYPES.find((b) => b.id === activeId) ?? BUSINESS_TYPES[0]
 
   return (
-    <SectionWrapper id="bisnis" className="py-16 md:py-24 bg-navy-800/30 border-y border-white/5">
+    <SectionWrapper id="bisnis" className="py-16 md:py-24 bg-slate-100/40 border-y border-slate-200/50">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-4">
-          <h2 className="font-display font-bold text-3xl md:text-4xl text-white">
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-slate-900">
             Satu Aplikasi, 9 Jenis Bisnis
           </h2>
-          <p className="text-slate-400 text-lg leading-relaxed">
+          <p className="text-slate-600 text-lg leading-relaxed">
             Pilih tipe bisnis Anda — lihat fitur yang dirancang khusus untuk kebutuhan Anda.
           </p>
         </div>
@@ -40,7 +40,7 @@ export function BusinessTabs() {
                 'transition-colors duration-150',
                 activeId === business.id
                   ? 'text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5',
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50',
               )}
             >
               {activeId === business.id && (
@@ -70,17 +70,17 @@ export function BusinessTabs() {
               className="space-y-6"
             >
               <div className="space-y-2">
-                <h3 className="font-display font-bold text-2xl md:text-3xl text-white">
+                <h3 className="font-display font-bold text-2xl md:text-3xl text-slate-900">
                   {activeBusiness.label}
                 </h3>
-                <p className="text-brand-light text-lg">{activeBusiness.tagline}</p>
+                <p className="text-brand text-lg">{activeBusiness.tagline}</p>
               </div>
 
               <ul className="space-y-3">
                 {activeBusiness.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3 text-slate-300">
+                  <li key={feature} className="flex items-start gap-3 text-slate-700">
                     <span
-                      className="flex items-center justify-center shrink-0 w-5 h-5 rounded-full bg-brand/15 text-brand-light mt-0.5"
+                      className="flex items-center justify-center shrink-0 w-5 h-5 rounded-full bg-brand/10 text-brand mt-0.5"
                       aria-hidden="true"
                     >
                       <Check size={14} />
@@ -100,14 +100,14 @@ export function BusinessTabs() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 16 }}
               transition={{ duration: 0.25, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-              className="rounded-2xl border border-navy-600 bg-navy-800 p-8 aspect-[4/3] flex items-center justify-center text-center"
-              style={{ borderColor: `${activeBusiness.color}33` }}
+              className="rounded-2xl border border-slate-200 bg-white shadow-sm p-8 aspect-[4/3] flex items-center justify-center text-center"
+              style={{ borderColor: `${activeBusiness.color}44` }}
             >
               <div className="space-y-3">
                 <div className="text-5xl" role="img" aria-label={`Ikon ${activeBusiness.label}`}>
                   {activeBusiness.emoji}
                 </div>
-                <p className="text-slate-400 text-sm max-w-xs mx-auto">
+                <p className="text-slate-500 text-sm max-w-xs mx-auto">
                   {activeBusiness.mockupDesc}
                 </p>
               </div>

@@ -14,10 +14,10 @@ export function FAQ() {
     <SectionWrapper id="faq" className="py-16 md:py-24">
       <div className="max-w-3xl mx-auto px-6">
         <div className="text-center mb-12 space-y-4">
-          <h2 className="font-display font-bold text-3xl md:text-4xl text-white">
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-slate-900">
             Pertanyaan yang Sering Ditanyakan
           </h2>
-          <p className="text-slate-400 text-lg leading-relaxed">
+          <p className="text-slate-600 text-lg leading-relaxed">
             Tidak menemukan jawaban? Hubungi kami via WhatsApp.
           </p>
         </div>
@@ -28,20 +28,20 @@ export function FAQ() {
             return (
               <div
                 key={faq.question}
-                className="rounded-2xl border border-navy-600 bg-navy-800 overflow-hidden"
+                className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm"
               >
                 <button
                   className="flex items-center justify-between w-full text-left px-6 py-4 gap-4"
                   onClick={() => setOpenIndex(isOpen ? null : index)}
                   aria-expanded={isOpen}
                 >
-                  <span className="font-semibold text-white text-sm md:text-base">
+                  <span className="font-semibold text-slate-900 text-sm md:text-base">
                     {faq.question}
                   </span>
                   <ChevronDown
                     size={20}
                     className={cn(
-                      'shrink-0 text-slate-400 transition-transform duration-[250ms]',
+                      'shrink-0 text-slate-500 transition-transform duration-[250ms]',
                       isOpen && 'rotate-180',
                     )}
                     aria-hidden="true"
@@ -55,7 +55,7 @@ export function FAQ() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
                     >
-                      <p className="px-6 pb-4 text-slate-400 text-sm leading-relaxed">
+                      <p className="px-6 pb-4 text-slate-600 text-sm leading-relaxed">
                         {faq.answer}
                       </p>
                     </motion.div>

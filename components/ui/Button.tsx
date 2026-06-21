@@ -18,7 +18,7 @@ export function Button({
       className={cn(
         'inline-flex items-center justify-center gap-2 font-semibold rounded-xl',
         'transition-all duration-150 focus-visible:outline-none focus-visible:ring-2',
-        'focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-navy-900',
+        'focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-white',
         'disabled:opacity-50 disabled:pointer-events-none',
 
         // Variants
@@ -29,8 +29,8 @@ export function Button({
           'active:scale-[0.98]',
         ],
         variant === 'secondary' && [
-          'bg-transparent text-white border border-white/20',
-          'hover:border-white/40 hover:bg-white/5',
+          'bg-transparent text-slate-800 border border-slate-300',
+          'hover:border-slate-400 hover:bg-slate-50',
         ],
         variant === 'ghost' && [
           'text-brand hover:text-brand-light hover:bg-brand/5',

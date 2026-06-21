@@ -22,13 +22,13 @@ export function Navbar() {
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition duration-300 border-b',
         scrolled
-          ? 'bg-navy-900/80 backdrop-blur-xl border-white/5 shadow-xl shadow-black/20'
-          : 'bg-navy-900/0 backdrop-blur-none border-white/0 shadow-none',
+          ? 'bg-white/80 backdrop-blur-xl border-slate-200/50 shadow-xl shadow-slate-200/20'
+          : 'bg-white/0 backdrop-blur-none border-slate-200/0 shadow-none',
       )}
     >
       <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="font-display font-bold text-xl text-white">
+        <Link href="/" className="font-display font-bold text-xl text-slate-900">
           Nuansa<span className="text-brand">Pos</span>
         </Link>
 
@@ -38,7 +38,7 @@ export function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-slate-400 hover:text-white text-sm font-medium transition-colors duration-150"
+              className="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors duration-150"
             >
               {link.label}
             </Link>
@@ -57,7 +57,7 @@ export function Navbar() {
 
         {/* Mobile menu button */}
         <button
-          className="md:hidden text-white p-2"
+          className="md:hidden text-slate-900 p-2"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
           aria-expanded={menuOpen}
@@ -68,12 +68,12 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-navy-900/95 backdrop-blur-xl border-t border-white/5 px-6 py-6 space-y-4">
+        <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200/50 px-6 py-6 space-y-4">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="block text-slate-300 hover:text-white text-base font-medium py-2"
+              className="block text-slate-600 hover:text-slate-900 text-base font-medium py-2"
               onClick={() => setMenuOpen(false)}
             >
               {link.label}

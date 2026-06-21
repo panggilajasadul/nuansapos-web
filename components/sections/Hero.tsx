@@ -41,7 +41,7 @@ export function Hero() {
           {/* Headline */}
           <motion.h1
             variants={item}
-            className="font-display font-extrabold text-4xl md:text-5xl lg:text-6xl text-white leading-[1.1]"
+            className="font-display font-extrabold text-4xl md:text-5xl lg:text-6xl text-slate-900 leading-[1.1]"
           >
             Kasir Android untuk{' '}
             <span className="text-gradient">Semua Bisnis</span>{' '}
@@ -51,11 +51,11 @@ export function Hero() {
           {/* Sub-headline */}
           <motion.p
             variants={item}
-            className="text-slate-400 text-lg md:text-xl leading-relaxed max-w-xl"
+            className="text-slate-600 text-lg md:text-xl leading-relaxed max-w-xl"
           >
             Satu aplikasi untuk Retail, Restaurant, Apotek, Bengkel, Laundry, dan 5 bisnis lainnya.
             Bekerja{' '}
-            <strong className="text-white">100% tanpa internet</strong>.
+            <strong className="text-slate-900">100% tanpa internet</strong>.
             Data di HP Anda sendiri.
           </motion.p>
 
@@ -81,8 +81,8 @@ export function Hero() {
           {/* Trust badges */}
           <motion.div variants={item} className="flex flex-wrap gap-3 pt-2">
             {TRUST_BADGES.map((badge) => (
-              <span key={badge} className="flex items-center gap-1.5 text-slate-400 text-sm">
-                <span className="text-emerald-400" aria-hidden="true">✓</span>
+              <span key={badge} className="flex items-center gap-1.5 text-slate-500 text-sm">
+                <span className="text-emerald-600" aria-hidden="true">✓</span>
                 {badge}
               </span>
             ))}

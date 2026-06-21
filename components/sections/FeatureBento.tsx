@@ -14,10 +14,10 @@ const ICON_MAP: Record<string, LucideIcon> = {
 }
 
 const COLOR_MAP: Record<string, string> = {
-  emerald: 'bg-emerald-500/10 text-emerald-400',
-  blue: 'bg-brand/10 text-brand-light',
-  purple: 'bg-purple-500/10 text-purple-400',
-  amber: 'bg-amber-500/10 text-amber-400',
+  emerald: 'bg-emerald-100 text-emerald-700',
+  blue: 'bg-blue-100 text-brand',
+  purple: 'bg-purple-100 text-purple-700',
+  amber: 'bg-amber-100 text-amber-700',
 }
 
 export function FeatureBento() {
@@ -25,10 +25,10 @@ export function FeatureBento() {
     <SectionWrapper id="fitur" className="py-16 md:py-24">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-4">
-          <h2 className="font-display font-bold text-3xl md:text-4xl text-white">
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-slate-900">
             Fitur yang Selalu Diandalkan
           </h2>
-          <p className="text-slate-400 text-lg leading-relaxed">
+          <p className="text-slate-600 text-lg leading-relaxed">
             Bukan sekadar fitur tambahan — ini fondasi yang membuat usaha Anda berjalan lancar setiap hari.
           </p>
         </div>
@@ -48,10 +48,10 @@ export function FeatureBento() {
                   <Icon size={24} />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-display font-bold text-lg text-white">
+                  <h3 className="font-display font-bold text-lg text-slate-900">
                     {feature.title}
                   </h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">
+                  <p className="text-slate-600 text-sm leading-relaxed">
                     {feature.description}
                   </p>
                 </div>

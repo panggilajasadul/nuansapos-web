@@ -44,7 +44,7 @@ export function PhoneMockup({ screenSrc, alt = 'Tampilan aplikasi NuansaPos' }: 
         </div>
 
         {/* Screen */}
-        <div className="rounded-[28px] overflow-hidden bg-navy-900 aspect-[9/19]">
+        <div className="rounded-[28px] overflow-hidden bg-slate-950 aspect-[9/19]">
           {screenSrc ? (
             <Image
               src={screenSrc}
@@ -56,13 +56,13 @@ export function PhoneMockup({ screenSrc, alt = 'Tampilan aplikasi NuansaPos' }: 
             />
           ) : (
             /* Placeholder screen jika belum ada screenshot */
-            <div className="w-full h-full bg-gradient-to-b from-navy-800 to-navy-900 flex items-center justify-center">
+            <div className="w-full h-full bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center">
               <div className="text-center space-y-3 p-6 w-full">
                 <div className="text-4xl" role="img" aria-label="Ikon kasir">🛒</div>
-                <div className="text-white font-display font-bold text-lg">NuansaPos</div>
+                <div className="text-slate-900 font-display font-bold text-lg">NuansaPos</div>
                 <div className="space-y-2">
                   {['Produk A', 'Produk B', 'Produk C'].map((item, i) => (
-                    <div key={i} className="bg-navy-700 rounded-lg px-3 py-2 text-xs text-slate-300 flex justify-between">
+                    <div key={i} className="bg-white border border-slate-200/50 shadow-sm rounded-lg px-3 py-2 text-xs text-slate-700 flex justify-between">
                       <span>{item}</span>
                       <span className="text-brand">Rp 25.000</span>
                     </div>
