@@ -82,7 +82,7 @@ export default function AdminDashboardClient() {
   // Generator State
   const [deviceId, setDeviceId] = useState('a1b2c3d4e5f6a7b8');
   const [tier, setTier] = useState<TierCode>('PRO');
-  const [businessName, setBusinessName] = useState('Nuansa Laundry & POS');
+  const [businessName, setBusinessName] = useState('Nuansa POS | Aplikasi Kasir');
   const [customerName, setCustomerName] = useState('Hamid Wijaya');
   const [isDownloading, setIsDownloading] = useState(false);
   const [marginY, setMarginY] = useState(6);
@@ -237,29 +237,29 @@ export default function AdminDashboardClient() {
   };
 
   return (
-    <div className="min-h-screen bg-navy-950 text-slate-100 flex flex-col font-body">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-body">
       {/* Navigation Header (Hidden on Print) */}
-      <header className="bg-navy-900/80 backdrop-blur-md border-b border-white/5 py-4 px-6 flex justify-between items-center z-10 sticky top-0 print:hidden">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 py-4 px-6 flex justify-between items-center z-10 sticky top-0 print:hidden">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-gradient-to-tr from-brand to-purple-600 rounded-xl flex items-center justify-center font-bold text-white text-lg">
             N
           </div>
           <div>
-            <h1 className="font-display font-bold text-base tracking-wide text-white leading-tight">
+            <h1 className="font-display font-bold text-base tracking-wide text-slate-900 leading-tight">
               NuansaPos
             </h1>
-            <span className="text-[10px] font-mono text-brand-light">Dashboard Administrator</span>
+            <span className="text-[10px] font-mono text-brand font-semibold">Dashboard Administrator</span>
           </div>
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex bg-navy-950 p-1 rounded-xl border border-white/5">
+        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50">
           <button
             onClick={() => setActiveTab('generator')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
               activeTab === 'generator'
-                ? 'bg-brand text-white shadow-glow-blue'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-brand text-white shadow-md shadow-brand/20'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Key className="w-3.5 h-3.5" />
@@ -269,8 +269,8 @@ export default function AdminDashboardClient() {
             onClick={() => setActiveTab('decoder')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
               activeTab === 'decoder'
-                ? 'bg-brand text-white shadow-glow-blue'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-brand text-white shadow-md shadow-brand/20'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Search className="w-3.5 h-3.5" />
@@ -281,7 +281,7 @@ export default function AdminDashboardClient() {
         {/* Logout Button */}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-red-400 transition-colors bg-navy-950 border border-white/5 hover:border-red-500/20 px-3.5 py-2 rounded-xl"
+          className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-red-650 transition-colors bg-white border border-slate-200 hover:border-red-200 px-3.5 py-2 rounded-xl shadow-sm"
         >
           <LogOut className="w-3.5 h-3.5" />
           Keluar
@@ -301,14 +301,14 @@ export default function AdminDashboardClient() {
                 animate={{ opacity: 1, y: 0 }}
                 className="glass rounded-3xl p-6 space-y-6"
               >
-                <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-                  <Cpu className="w-5 h-5 text-brand-light" />
-                  <h2 className="font-display font-semibold text-lg text-white">Buat Lisensi Baru</h2>
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60">
+                  <Cpu className="w-5 h-5 text-brand" />
+                  <h2 className="font-display font-semibold text-lg text-slate-900">Buat Lisensi Baru</h2>
                 </div>
 
                 {/* Device ID Input */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300">
+                  <label className="text-xs font-semibold text-slate-700">
                     ID Perangkat Android (Hex / ANDROID_ID)
                   </label>
                   <input
@@ -316,7 +316,7 @@ export default function AdminDashboardClient() {
                     value={deviceId}
                     onChange={(e) => setDeviceId(e.target.value)}
                     placeholder="Contoh: a1b2c3d4e5f6a7b8"
-                    className="w-full bg-navy-950 border border-slate-700 rounded-xl py-3 px-4 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all text-sm uppercase"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 font-mono placeholder-slate-400 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 transition-all text-sm uppercase"
                   />
                   <p className="text-[10px] text-slate-500">
                     ID Perangkat didapatkan dari menu aktivasi di HP Android pelanggan.
@@ -325,7 +325,7 @@ export default function AdminDashboardClient() {
 
                 {/* Tier Selection Card Grid */}
                 <div className="space-y-3">
-                  <label className="text-xs font-semibold text-slate-300 block">Pilih Paket Lisensi</label>
+                  <label className="text-xs font-semibold text-slate-700 block">Pilih Paket Lisensi</label>
                   <div className="grid grid-cols-3 gap-3">
                     {(Object.keys(TIER_META) as TierCode[]).map((key) => (
                       <button
@@ -334,14 +334,16 @@ export default function AdminDashboardClient() {
                         onClick={() => setTier(key)}
                         className={`border rounded-2xl p-4 flex flex-col items-center justify-center gap-1 transition-all text-center ${
                           tier === key
-                            ? 'border-brand bg-brand/10 shadow-glow-blue'
-                            : 'border-white/5 bg-navy-950 hover:border-slate-700'
+                            ? 'border-brand bg-brand/5 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
                         }`}
                       >
-                        <span className="font-display text-sm font-bold text-white block">
+                        <span className={`font-display text-sm font-bold block ${
+                          tier === key ? 'text-brand' : 'text-slate-800'
+                        }`}>
                           {key}
                         </span>
-                        <span className="text-[10px] text-slate-400 block">
+                        <span className="text-[10px] text-slate-500 block">
                           {TIER_META[key].max}
                         </span>
                       </button>
@@ -352,8 +354,8 @@ export default function AdminDashboardClient() {
                 {/* Struk Metadata Inputs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                      <Building className="w-3.5 h-3.5 text-slate-400" />
+                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-slate-505" />
                       Nama Toko / Bisnis
                     </label>
                     <input
@@ -361,12 +363,12 @@ export default function AdminDashboardClient() {
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       placeholder="Contoh: Laundry Jaya"
-                      className="w-full bg-navy-950 border border-slate-700 rounded-xl py-2.5 px-3 text-white text-sm focus:outline-none focus:border-brand"
+                      className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 text-slate-800 text-sm focus:outline-none focus:border-brand"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-slate-400" />
+                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-slate-505" />
                       Nama Pelanggan
                     </label>
                     <input
@@ -374,7 +376,7 @@ export default function AdminDashboardClient() {
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Contoh: Budi Santoso"
-                      className="w-full bg-navy-950 border border-slate-700 rounded-xl py-2.5 px-3 text-white text-sm focus:outline-none focus:border-brand"
+                      className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 text-slate-800 text-sm focus:outline-none focus:border-brand"
                     />
                   </div>
                 </div>
@@ -382,8 +384,8 @@ export default function AdminDashboardClient() {
                 {/* Margin Controls */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">
-                      Margin Atas/Bawah: <span className="text-brand-light font-bold">{marginY}</span>mm
+                    <label className="text-xs font-semibold text-slate-700">
+                      Margin Atas/Bawah: <span className="text-brand font-bold">{marginY}</span>mm
                     </label>
                     <input
                       type="range"
@@ -391,12 +393,12 @@ export default function AdminDashboardClient() {
                       max="25"
                       value={marginY}
                       onChange={(e) => setMarginY(parseInt(e.target.value))}
-                      className="w-full h-1 bg-navy-950 rounded-lg appearance-none cursor-pointer accent-brand"
+                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-300">
-                      Margin Kiri/Kanan: <span className="text-brand-light font-bold">{marginX}</span>mm
+                    <label className="text-xs font-semibold text-slate-700">
+                      Margin Kiri/Kanan: <span className="text-brand font-bold">{marginX}</span>mm
                     </label>
                     <input
                       type="range"
@@ -404,18 +406,18 @@ export default function AdminDashboardClient() {
                       max="25"
                       value={marginX}
                       onChange={(e) => setMarginX(parseInt(e.target.value))}
-                      className="w-full h-1 bg-navy-950 rounded-lg appearance-none cursor-pointer accent-brand"
+                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand"
                     />
                   </div>
                 </div>
 
                 {/* Live Output */}
-                <div className="bg-navy-950/60 border border-brand/20 rounded-2xl p-4 space-y-2 relative overflow-hidden">
+                <div className="bg-brand/5 border border-brand/20 rounded-2xl p-4 space-y-2 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-brand/5 rounded-full blur-xl pointer-events-none" />
-                  <span className="text-[10px] font-bold text-brand-light uppercase tracking-widest block">
+                  <span className="text-[10px] font-bold text-brand uppercase tracking-widest block">
                     Kunci Lisensi Terbuat
                   </span>
-                  <div className="text-center font-mono text-sm md:text-base font-bold text-white tracking-wider py-2 bg-navy-950/80 border border-white/5 rounded-xl select-all select-none">
+                  <div className="text-center font-mono text-sm md:text-base font-bold text-slate-900 tracking-wider py-2 bg-white border border-slate-200 rounded-xl select-all select-none">
                     {licenseKey || 'MEMBUTUHKAN DEVICE ID'}
                   </div>
                 </div>
@@ -425,16 +427,16 @@ export default function AdminDashboardClient() {
                   <button
                     onClick={handleCopy}
                     disabled={!licenseKey}
-                    className="flex-1 bg-navy-950 hover:bg-navy-900 border border-white/10 hover:border-white/20 text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                    className="flex-1 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
                   >
                     {copied ? (
                       <>
-                        <Check className="w-4 h-4 text-emerald-400" />
+                        <Check className="w-4 h-4 text-emerald-600" />
                         <span>Disalin!</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-4 h-4 text-slate-400" />
+                        <Copy className="w-4 h-4 text-slate-500" />
                         <span>Salin Kunci</span>
                       </>
                     )}
@@ -442,13 +444,13 @@ export default function AdminDashboardClient() {
                   <button
                     onClick={handleDownload}
                     disabled={!licenseKey || isDownloading}
-                    className="flex-1 bg-navy-950 hover:bg-navy-900 border border-white/10 hover:border-white/20 text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                    className="flex-1 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
                   >
                     {isDownloading ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-slate-400 border-t-brand rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Copy className="w-4 h-4 text-slate-400" />
+                        <Copy className="w-4 h-4 text-slate-500" />
                         <span>Simpan Gambar</span>
                       </>
                     )}
@@ -456,7 +458,7 @@ export default function AdminDashboardClient() {
                   <button
                     onClick={handlePrint}
                     disabled={!licenseKey}
-                    className="flex-1 bg-brand hover:bg-brand-dark text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-glow-blue disabled:opacity-50"
+                    className="flex-1 bg-brand hover:bg-brand-dark text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-brand/20 disabled:opacity-50"
                   >
                     <Printer className="w-4 h-4" />
                     <span>Cetak Resi</span>
@@ -467,8 +469,8 @@ export default function AdminDashboardClient() {
 
             {/* Receipt Preview Column (Right) */}
             <div className="lg:col-span-5 flex flex-col items-center print:block print:w-full">
-              <h3 className="text-xs font-semibold text-slate-400 mb-4 flex items-center gap-1.5 print:hidden">
-                <FileText className="w-4 h-4 text-brand-light" />
+              <h3 className="text-xs font-semibold text-slate-600 mb-4 flex items-center gap-1.5 print:hidden">
+                <FileText className="w-4 h-4 text-brand" />
                 Live Preview Cetakan Struk (100mm x 150mm)
               </h3>
 
@@ -488,7 +490,7 @@ export default function AdminDashboardClient() {
                 {/* Jagged Edge Simulation (Hidden on Print) */}
                 <div className="absolute top-0 inset-x-0 h-2.5 bg-repeat-x pointer-events-none print:hidden"
                   style={{
-                    backgroundImage: `linear-gradient(-45deg, #0A1628 5px, transparent 0), linear-gradient(45deg, #0A1628 5px, transparent 0)`,
+                    backgroundImage: `linear-gradient(-45deg, #F8FAFC 5px, transparent 0), linear-gradient(45deg, #F8FAFC 5px, transparent 0)`,
                     backgroundSize: '10px 10px'
                   }}
                 />
@@ -568,7 +570,7 @@ export default function AdminDashboardClient() {
                 {/* Jagged Edge Simulation Bottom (Hidden on Print) */}
                 <div className="absolute bottom-0 inset-x-0 h-2.5 bg-repeat-x pointer-events-none print:hidden"
                   style={{
-                    backgroundImage: `linear-gradient(-45deg, transparent 5px, #0A1628 0), linear-gradient(45deg, transparent 5px, #0A1628 0)`,
+                    backgroundImage: `linear-gradient(-45deg, transparent 5px, #F8FAFC 0), linear-gradient(45deg, transparent 5px, #F8FAFC 0)`,
                     backgroundSize: '10px 10px'
                   }}
                 />
@@ -585,15 +587,15 @@ export default function AdminDashboardClient() {
               animate={{ opacity: 1, y: 0 }}
               className="glass rounded-3xl p-6 space-y-6 max-w-2xl mx-auto"
             >
-              <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-                <Search className="w-5 h-5 text-brand-light" />
-                <h2 className="font-display font-semibold text-lg text-white">Dekode & Verifikasi Lisensi</h2>
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60">
+                <Search className="w-5 h-5 text-brand" />
+                <h2 className="font-display font-semibold text-lg text-slate-900">Dekode & Verifikasi Lisensi</h2>
               </div>
 
               <div className="space-y-4">
                 {/* License Key Input */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300">
+                  <label className="text-xs font-semibold text-slate-700">
                     Masukkan Kunci Lisensi (Full)
                   </label>
                   <input
@@ -601,13 +603,13 @@ export default function AdminDashboardClient() {
                     value={decodeKey}
                     onChange={(e) => setDecodeKey(e.target.value)}
                     placeholder="Contoh: NUANSA-PRO-XXXXX-XXXXX-XXXXX"
-                    className="w-full bg-navy-950 border border-slate-700 rounded-xl py-3 px-4 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-brand text-sm uppercase"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-900 font-mono placeholder-slate-400 focus:outline-none focus:border-brand text-sm uppercase"
                   />
                 </div>
 
                 {/* Device ID Input for signature check */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-300">
+                  <label className="text-xs font-semibold text-slate-700">
                     ID Perangkat Terkait (Opsional, untuk Cek Validasi Kunci)
                   </label>
                   <input
@@ -615,14 +617,14 @@ export default function AdminDashboardClient() {
                     value={decodeDeviceId}
                     onChange={(e) => setDecodeDeviceId(e.target.value)}
                     placeholder="Contoh: a1b2c3d4e5f6a7b8"
-                    className="w-full bg-navy-950 border border-slate-700 rounded-xl py-3 px-4 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-brand text-sm uppercase"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-900 font-mono placeholder-slate-400 focus:outline-none focus:border-brand text-sm uppercase"
                   />
                 </div>
 
                 {/* Action button */}
                 <button
                   onClick={handleDecode}
-                  className="w-full bg-brand hover:bg-brand-dark text-white rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-glow-blue"
+                  className="w-full bg-brand hover:bg-brand-dark text-white rounded-xl py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-brand/20"
                 >
                   <RefreshCw className="w-4 h-4 animate-spin-slow" />
                   <span>Dekode & Jalankan Integritas</span>
@@ -640,38 +642,38 @@ export default function AdminDashboardClient() {
                   >
                     <div className={`border rounded-2xl p-5 space-y-4 ${
                       decodeResult.valid 
-                        ? 'border-emerald-500/20 bg-emerald-500/5' 
+                        ? 'border-emerald-200 bg-emerald-50/50' 
                         : decodeResult.formatOk 
-                          ? 'border-yellow-500/20 bg-yellow-500/5' 
-                          : 'border-red-500/20 bg-red-500/5'
+                          ? 'border-amber-200 bg-amber-50/50' 
+                          : 'border-red-200 bg-red-50/50'
                     }`}>
                       <div className="flex items-center gap-3">
                         {decodeResult.valid ? (
-                          <ShieldCheck className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+                          <ShieldCheck className="w-6 h-6 text-emerald-600 flex-shrink-0" />
                         ) : (
                           <ShieldAlert className={`w-6 h-6 flex-shrink-0 ${
-                            decodeResult.formatOk ? 'text-yellow-400' : 'text-red-400'
+                            decodeResult.formatOk ? 'text-amber-600' : 'text-red-650'
                           }`} />
                         )}
-                        <span className="font-semibold text-sm text-white">
+                        <span className="font-semibold text-sm text-slate-900">
                           Status Hasil Analisis
                         </span>
                       </div>
 
-                      <div className="space-y-2 text-xs font-body text-slate-300">
+                      <div className="space-y-2 text-xs font-body text-slate-700">
                         {decodeResult.tier && (
-                          <div className="flex justify-between border-b border-white/5 py-1">
-                            <span className="text-slate-400">Deteksi Paket:</span>
-                            <span className="font-bold text-white">{decodeResult.tier}</span>
+                          <div className="flex justify-between border-b border-slate-200/60 py-1">
+                            <span className="text-slate-500">Deteksi Paket:</span>
+                            <span className="font-bold text-slate-900">{decodeResult.tier}</span>
                           </div>
                         )}
                         {decodeResult.deviceId && (
-                          <div className="flex justify-between border-b border-white/5 py-1">
+                          <div className="flex justify-between border-b border-slate-200/60 py-1">
                             <span className="text-slate-400">ID Perangkat:</span>
-                            <span className="font-mono text-white">{decodeResult.deviceId}</span>
+                            <span className="font-mono text-slate-900">{decodeResult.deviceId}</span>
                           </div>
                         )}
-                        <p className="mt-2 text-xs leading-relaxed leading-normal text-slate-300">
+                        <p className="mt-2 text-xs leading-relaxed leading-normal text-slate-600">
                           {decodeResult.message}
                         </p>
                       </div>
