@@ -175,12 +175,20 @@ export default function AdminDashboardClient() {
   const handleGenerateOnline = async () => {
     setIsGeneratingOnline(true);
     try {
-      // Generate a cryptographically secure random token (Base32 encoded)
-      const array = new Uint8Array(15);
-      window.crypto.getRandomValues(array);
+      // Generate a token (using cryptographically secure random values if available, or Math.random as fallback)
       let token = '';
-      for (let i = 0; i < 15; i++) {
-        token += ALPHABET[array[i] % ALPHABET.length];
+      if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+        const array = new Uint8Array(15);
+        window.crypto.getRandomValues(array);
+        for (let i = 0; i < 15; i++) {
+          token += ALPHABET[array[i] % ALPHABET.length];
+        }
+      } else {
+        // Fallback for insecure/HTTP contexts
+        for (let i = 0; i < 15; i++) {
+          const rand = Math.floor(Math.random() * ALPHABET.length);
+          token += ALPHABET[rand];
+        }
       }
 
       const generatedKey = `NUANSA-${tier}-${token.substring(0, 5)}-${token.substring(5, 10)}-${token.substring(10, 15)}`;

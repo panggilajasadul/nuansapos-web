@@ -65,6 +65,12 @@ export async function saveLicenseAction(data: {
   const isAuthed = await checkAuth();
   if (!isAuthed) return { success: false, error: 'Unauthorized' };
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return { success: false, error: 'Kredensial Supabase (URL / Service Role Key) belum dikonfigurasi di server.' };
+  }
+
   try {
     const { error } = await supabase.from('licenses').insert({
       license_key: data.licenseKey.trim().toUpperCase(),
@@ -141,6 +147,12 @@ export async function resetActivationsAction(licenseId: string) {
   const isAuthed = await checkAuth();
   if (!isAuthed) return { success: false, error: 'Unauthorized' };
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return { success: false, error: 'Kredensial Supabase (URL / Service Role Key) belum dikonfigurasi di server.' };
+  }
+
   try {
     const { error } = await supabase
       .from('license_activations')
@@ -161,6 +173,12 @@ export async function resetActivationsAction(licenseId: string) {
 export async function deleteLicenseAction(licenseId: string) {
   const isAuthed = await checkAuth();
   if (!isAuthed) return { success: false, error: 'Unauthorized' };
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return { success: false, error: 'Kredensial Supabase (URL / Service Role Key) belum dikonfigurasi di server.' };
+  }
 
   try {
     const { error } = await supabase
