@@ -30,6 +30,7 @@ import {
   resetActivationsAction, 
   deleteLicenseAction 
 } from './actions';
+import apkQrImage from '@/assets/nuasapos-apk.png';
 
 const SECRET = 'NuansaP0s@2024#Batch24$Offline!';
 const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -841,15 +842,25 @@ export default function AdminDashboardClient() {
 
                   {/* QR Code Container */}
                   {licenseKey && (
-                    <div className="flex flex-col items-center justify-center my-3">
-                      {/* Render standard web QR Code fallback API image */}
+                    <div className="flex flex-col items-center justify-center my-3 px-2">
+                      <span className="text-[8px] font-bold mb-1 tracking-wider uppercase">
+                        QR DOWNLOAD APLIKASI
+                      </span>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(licenseKey)}`}
-                        alt="Licensing QR Code"
-                        className="w-28 h-28 border border-slate-300 p-1 bg-white"
+                        src={apkQrImage.src}
+                        alt="Download APK QR Code"
+                        className="w-28 h-28 border border-black/30 p-1 bg-white object-contain"
                       />
-                      <span className="text-[7px] text-slate-600 mt-1">Pindai QR ini atau masukkan kunci manual</span>
+                      <span className="text-[7px] mt-1.5 leading-tight text-center">
+                        Pindai untuk unduh file APK NuansaPOS
+                      </span>
+                      <div className="mt-2 text-center text-[7px] max-w-[280px]">
+                        <span className="block font-bold">Gagal pindai? Unduh manual di:</span>
+                        <span className="font-mono break-all block leading-normal mt-0.5 select-all">
+                          https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link
+                        </span>
+                      </div>
                     </div>
                   )}
 
