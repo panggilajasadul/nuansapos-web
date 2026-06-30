@@ -23,14 +23,16 @@ import {
   Trash2,
   Lock
 } from 'lucide-react';
-import { 
-  logoutAction, 
-  saveLicenseAction, 
-  listLicensesAction, 
-  resetActivationsAction, 
-  deleteLicenseAction 
+import {
+  logoutAction,
+  saveLicenseAction,
+  listLicensesAction,
+  resetActivationsAction,
+  deleteLicenseAction,
+  listOrdersAction
 } from './actions';
 import apkQrImage from '@/assets/nuasapos-apk.png';
+import { formatRupiah } from '@/lib/utils';
 
 const SECRET = 'NuansaP0s@2024#Batch24$Offline!';
 const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -89,7 +91,7 @@ async function computeHMACSHA256(secret: string, message: string): Promise<Uint8
 }
 
 export default function AdminDashboardClient() {
-  const [activeTab, setActiveTab] = useState<'generator' | 'decoder' | 'manager'>('generator');
+  const [activeTab, setActiveTab] = useState<'generator' | 'decoder' | 'manager' | 'orders'>('generator');
   
   // Generator State
   const [menuOpen, setMenuOpen] = useState(false);
@@ -123,6 +125,12 @@ export default function AdminDashboardClient() {
   const [licensesError, setLicensesError] = useState<string | null>(null);
   const [licensesSearch, setLicensesSearch] = useState('');
 
+  // Orders State (Supabase List)
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isOrdersLoading, setIsOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [ordersSearch, setOrdersSearch] = useState('');
+
   // Set real-time receipt date on load and key updates
   useEffect(() => {
     const now = new Date();
@@ -134,6 +142,9 @@ export default function AdminDashboardClient() {
   useEffect(() => {
     if (activeTab === 'manager') {
       fetchLicenses();
+    }
+    if (activeTab === 'orders') {
+      fetchOrders();
     }
   }, [activeTab]);
 
@@ -151,6 +162,23 @@ export default function AdminDashboardClient() {
       setLicensesError(err.message || 'Gagal terhubung ke database.');
     } finally {
       setIsLicensesLoading(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    setIsOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const res = await listOrdersAction();
+      if (res.success) {
+        setOrders(res.data);
+      } else {
+        setOrdersError(res.error);
+      }
+    } catch (err: any) {
+      setOrdersError(err.message || 'Gagal terhubung ke database.');
+    } finally {
+      setIsOrdersLoading(false);
     }
   };
 
@@ -413,6 +441,17 @@ export default function AdminDashboardClient() {
                 <Database className="w-3.5 h-3.5" />
                 Daftar Lisensi (Online)
               </button>
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+                  activeTab === 'orders'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Pesanan
+              </button>
             </div>
 
             {/* Logout Button */}
@@ -486,8 +525,22 @@ export default function AdminDashboardClient() {
                 <Database className="w-4 h-4" />
                 Daftar Lisensi (Online)
               </button>
+              <button
+                onClick={() => {
+                  setActiveTab('orders');
+                  setMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2.5 transition-all ${
+                  activeTab === 'orders'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Pesanan
+              </button>
             </div>
-            
+
             <button
               onClick={() => {
                 setMenuOpen(false);
@@ -790,7 +843,7 @@ export default function AdminDashboardClient() {
                 />
 
                 <div className="flex flex-col gap-1 w-full">
-                  <div className="text-center pt-3 pb-2">
+                  <div className="text-center pt-4 pb-2">
                     <div className="text-sm font-bold tracking-wider uppercase">
                       {businessName.toUpperCase() || 'NUANSAPOS'}
                     </div>
@@ -798,9 +851,9 @@ export default function AdminDashboardClient() {
                     <div className="text-[8px] text-slate-600 mt-1">{receiptDate}</div>
                   </div>
 
-                  <div className="border-t border-dashed border-black my-2" />
+                  <div className="border-t border-dashed border-black my-1.5" />
 
-                  <div className="space-y-1 text-[10px]">
+                  <div className="space-y-0.5 text-[10px]">
                     <div className="flex justify-between">
                       <span>Pelanggan:</span>
                       <span>{customerName || '-'}</span>
@@ -813,9 +866,9 @@ export default function AdminDashboardClient() {
                     </div>
                   </div>
 
-                  <div className="border-t border-dashed border-black my-2" />
+                  <div className="border-t border-dashed border-black my-1.5" />
 
-                  <div className="space-y-1 text-[10px]">
+                  <div className="space-y-0.5 text-[10px]">
                     <div className="flex justify-between font-bold text-xs">
                       <span>Tipe Paket:</span>
                       <span>{TIER_META[tier].label}</span>
@@ -831,8 +884,8 @@ export default function AdminDashboardClient() {
                   </div>
 
                   {/* Struk Key Container */}
-                  <div className="bg-slate-100 border border-slate-300 py-3 px-2 text-center my-3 rounded">
-                    <span className="text-[8px] text-slate-600 uppercase tracking-wide block mb-1">
+                  <div className="bg-slate-100 border border-slate-300 py-1.5 px-2 text-center my-1.5 rounded">
+                    <span className="text-[8px] text-slate-600 uppercase tracking-wide block mb-0.5">
                       KODE AKTIVASI LISENSI
                     </span>
                     <span className="text-xs font-bold font-mono tracking-wide block break-all text-black">
@@ -840,31 +893,42 @@ export default function AdminDashboardClient() {
                     </span>
                   </div>
 
-                  {/* QR Code Container */}
+                  {/* QR Code Container (2-Column Table for html2canvas & print stability) */}
                   {licenseKey && (
-                    <div className="flex flex-col items-center justify-center my-3 px-2">
-                      <span className="text-[8px] font-bold mb-1 tracking-wider uppercase">
-                        QR DOWNLOAD APLIKASI
-                      </span>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={apkQrImage.src}
-                        alt="Download APK QR Code"
-                        className="w-28 h-28 border border-black/30 p-1 bg-white object-contain"
-                      />
-                      <span className="text-[7px] mt-1.5 leading-tight text-center">
-                        Pindai untuk unduh file APK NuansaPOS
-                      </span>
-                      <div className="mt-2 text-center text-[7px] max-w-[280px]">
-                        <span className="block font-bold">Gagal pindai? Unduh manual di:</span>
-                        <span className="font-mono break-all block leading-normal mt-0.5 select-all">
-                          https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link
-                        </span>
-                      </div>
-                    </div>
+                    <table className="w-full mt-3 mb-2 text-left" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr>
+                          <td className="align-middle pr-1.5" style={{ width: '62%', verticalAlign: 'middle' }}>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[8px] font-bold tracking-wider uppercase">
+                                QR DOWNLOAD APLIKASI
+                              </span>
+                              <span className="text-[7px] leading-tight text-slate-700">
+                                Pindai untuk unduh file APK NuansaPOS.
+                              </span>
+                              <div className="text-[7px] leading-tight mt-0.5">
+                                <span className="block font-bold">Gagal pindai? Unduh manual:</span>
+                                <span className="font-mono break-all block mt-0.5 select-all text-slate-700 leading-normal">
+                                  https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="align-middle text-right" style={{ width: '38%', verticalAlign: 'middle', textAlign: 'right' }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                              src={apkQrImage.src}
+                              alt="Download APK QR Code"
+                              className="w-24 h-24 border border-black/30 p-1 bg-white object-contain inline-block"
+                              style={{ width: '96px', height: '96px', minWidth: '96px', minHeight: '96px' }}
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   )}
 
-                  <div className="border-t border-dashed border-black my-2" />
+                  <div className="border-t border-dashed border-black my-1.5" />
                 </div>
 
                 <div className="text-center text-[8px] text-slate-700 pt-1">
@@ -1287,6 +1351,145 @@ export default function AdminDashboardClient() {
                     );
                   })()}
                 </>
+              )}
+            </motion.div>
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="lg:col-span-12 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-6 space-y-6"
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200/60">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-brand" />
+                  <div>
+                    <h2 className="font-display font-semibold text-lg text-slate-900">Pesanan Pembelian</h2>
+                    <p className="text-[11px] text-slate-500">Riwayat transaksi lisensi via Midtrans dari landing page.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Cari nama, email, no order..."
+                      value={ordersSearch}
+                      onChange={(e) => setOrdersSearch(e.target.value)}
+                      className="bg-slate-100 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-brand w-64 text-slate-800"
+                    />
+                  </div>
+                  <button
+                    onClick={fetchOrders}
+                    className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors"
+                    title="Segarkan data"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-slate-650 ${isOrdersLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {ordersError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl flex items-start gap-3">
+                  <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-650" />
+                  <div>
+                    <p className="font-bold text-sm">Gagal memuat pesanan</p>
+                    <p className="text-xs leading-relaxed text-slate-705">{ordersError}</p>
+                  </div>
+                </div>
+              )}
+
+              {isOrdersLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-500">
+                  <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin" />
+                  <span className="text-xs">Memuat data dari database Supabase...</span>
+                </div>
+              ) : (
+                (() => {
+                  const filtered = orders.filter((order) => {
+                    const search = ordersSearch.toLowerCase();
+                    return (
+                      order.midtransOrderId.toLowerCase().includes(search) ||
+                      order.customerName.toLowerCase().includes(search) ||
+                      order.customerEmail.toLowerCase().includes(search) ||
+                      order.customerWhatsapp.toLowerCase().includes(search)
+                    );
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-12 space-y-2 text-slate-400">
+                        <FileText className="w-12 h-12 mx-auto text-slate-350 stroke-1" />
+                        <p className="text-sm font-semibold">Belum ada pesanan</p>
+                        <p className="text-xs max-w-xs mx-auto">
+                          {ordersSearch
+                            ? 'Silakan coba masukkan kata kunci pencarian yang lain.'
+                            : 'Pesanan akan muncul di sini setelah ada pelanggan yang membeli dari landing page.'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  const statusBadge = (status: string) => {
+                    const map: Record<string, string> = {
+                      paid: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                      pending: 'bg-amber-50 text-amber-700 border-amber-100',
+                      failed: 'bg-red-50 text-red-700 border-red-100',
+                      cancelled: 'bg-slate-100 text-slate-600 border-slate-200',
+                      expired: 'bg-slate-100 text-slate-600 border-slate-200',
+                    };
+                    return map[status] || map.pending;
+                  };
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filtered.map((order) => (
+                        <div
+                          key={order.id}
+                          className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:shadow-md transition-all space-y-3"
+                        >
+                          <div className="flex items-start justify-between">
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide border ${statusBadge(order.paymentStatus)}`}>
+                              {order.paymentStatus}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {new Date(order.createdAt).toLocaleDateString('id-ID', {
+                                year: 'numeric', month: 'short', day: 'numeric',
+                              })}
+                            </span>
+                          </div>
+
+                          <div className="font-mono text-[11px] text-slate-500">{order.midtransOrderId}</div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs leading-normal">
+                            <div>
+                              <span className="text-slate-400 block text-[9px] uppercase font-bold">Pelanggan</span>
+                              <span className="text-slate-800 font-semibold">{order.customerName}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[9px] uppercase font-bold">Paket</span>
+                              <span className="text-slate-800 font-semibold">
+                                {order.tier === 'BSC' ? 'Basic' : order.tier === 'PRO' ? 'Pro' : 'Premium'} — {formatRupiah(order.price)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[9px] uppercase font-bold">Email</span>
+                              <span className="text-slate-700">{order.customerEmail}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block text-[9px] uppercase font-bold">WhatsApp</span>
+                              <span className="text-slate-700">{order.customerWhatsapp}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
               )}
             </motion.div>
           </div>

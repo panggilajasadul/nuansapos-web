@@ -168,6 +168,52 @@ export async function resetActivationsAction(licenseId: string) {
 }
 
 /**
+ * Lists all purchase orders (read-only, for admin visibility).
+ */
+export async function listOrdersAction() {
+  const isAuthed = await checkAuth();
+  if (!isAuthed) return { success: false, error: 'Unauthorized', data: [] };
+
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+      return { success: false, error: 'Supabase URL/Key belum dikonfigurasi di server.', data: [] };
+    }
+
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    const data = (orders || []).map((order: any) => ({
+      id: order.id,
+      midtransOrderId: order.midtrans_order_id,
+      tier: order.tier,
+      price: order.price,
+      maxDevices: order.max_devices,
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      customerWhatsapp: order.customer_whatsapp,
+      customerAddress: order.customer_address,
+      businessName: order.business_name || '',
+      businessType: order.business_type || '',
+      paymentStatus: order.payment_status,
+      licenseId: order.license_id,
+      createdAt: order.created_at,
+      paidAt: order.paid_at,
+    }));
+
+    return { success: true, data };
+  } catch (err: any) {
+    console.error('Error listing orders:', err);
+    return { success: false, error: err.message || 'Gagal mengambil data pesanan dari database', data: [] };
+  }
+}
+
+/**
  * Deletes/Revokes a license key.
  */
 export async function deleteLicenseAction(licenseId: string) {

@@ -213,10 +213,9 @@ export const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
 ]
 
 export type PricingPlan = {
-  id: string
+  id: 'free' | 'BSC' | 'PRO' | 'PRM'
   name: string
-  monthlyPrice: number
-  yearlyPrice: number
+  price: number
   description: string
   limit: string
   features: string[]
@@ -226,12 +225,13 @@ export type PricingPlan = {
   badge: string | null
 }
 
+// Harga lifetime (sekali bayar, seumur hidup - tanpa biaya bulanan).
+// Harus selalu sinkron dengan lib/packages.ts (sumber kebenaran harga di server).
 export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'free',
     name: 'Gratis',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    price: 0,
     description: 'Untuk usaha yang baru mulai',
     limit: '500 produk · 5.000 transaksi',
     features: [
@@ -247,36 +247,51 @@ export const PRICING_PLANS: PricingPlan[] = [
     badge: null,
   },
   {
-    id: 'premium',
-    name: 'Premium',
-    monthlyPrice: 99000,
-    yearlyPrice: 79000,
-    description: 'Untuk toko yang sedang berkembang',
-    limit: 'Produk & transaksi tidak terbatas',
+    id: 'BSC',
+    name: 'Basic',
+    price: 299000,
+    description: 'Lisensi lifetime untuk usaha kecil, 1 perangkat',
+    limit: 'Produk & transaksi tidak terbatas · 1 perangkat',
     features: [
       'Semua fitur Gratis',
+      'Produk & transaksi tidak terbatas',
+      'Backup otomatis harian',
+      'Cetak struk thermal Bluetooth',
+      'Bayar sekali, pakai selamanya',
+    ],
+    notIncluded: ['Multi-user', 'Export Excel & PDF', 'Promo & voucher'],
+    cta: 'Beli Basic — Lifetime',
+    highlighted: false,
+    badge: null,
+  },
+  {
+    id: 'PRO',
+    name: 'Pro',
+    price: 599000,
+    description: 'Untuk toko yang sedang berkembang, hingga 3 perangkat',
+    limit: 'Produk & transaksi tidak terbatas · 3 perangkat',
+    features: [
+      'Semua fitur Basic',
+      'Hingga 3 perangkat aktif',
       'Multi-user hingga 5 akun',
       'Export Excel & PDF',
-      'Backup otomatis harian',
       'Promo, diskon & voucher',
       'Laporan laba rugi',
       'Priority support WhatsApp',
     ],
     notIncluded: [],
-    cta: 'Coba 14 Hari Gratis',
+    cta: 'Beli Pro — Lifetime',
     highlighted: true,
     badge: 'Paling Populer',
   },
   {
-    id: 'pro',
-    name: 'Pro',
-    monthlyPrice: 199000,
-    yearlyPrice: 159000,
-    description: 'Untuk bisnis yang lebih kompleks',
-    limit: 'Semua fitur + semua modul bisnis',
+    id: 'PRM',
+    name: 'Premium',
+    price: 999000,
+    description: 'Untuk bisnis yang lebih kompleks, fitur paling lengkap',
+    limit: 'Semua fitur + semua modul bisnis · 3 perangkat',
     features: [
-      'Semua fitur Premium',
-      'User tidak terbatas',
+      'Semua fitur Pro',
       'Modul akuntansi double-entry',
       'Rekonsiliasi bank (upload CSV)',
       'Import pesanan marketplace',
@@ -284,7 +299,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Dedicated support',
     ],
     notIncluded: [],
-    cta: 'Mulai Pro',
+    cta: 'Beli Premium — Lifetime',
     highlighted: false,
     badge: null,
   },
