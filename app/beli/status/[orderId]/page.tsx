@@ -2,16 +2,48 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, Clock, XCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Copy,
+  Check,
+  Mail,
+  MessageCircle,
+  Loader2,
+} from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { PACKAGES } from '@/lib/packages'
+import { SITE_CONFIG } from '@/lib/constants'
+import { formatRupiah } from '@/lib/utils'
 
 type OrderStatus = 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
 
+type OrderData = {
+  status: OrderStatus
+  tier: keyof typeof PACKAGES
+  price: number
+  email: string
+  customerName: string
+  orderId: string
+  createdAt: string
+  paidAt: string | null
+}
+
+const STEPS = ['Checkout', 'Pembayaran', 'Selesai'] as const
+
+function stepIndexFor(status: OrderStatus | null) {
+  if (status === 'paid') return 2
+  if (status === 'pending' || status === null) return 1
+  return 1 // failed/expired/cancelled juga berhenti di step pembayaran
+}
+
 export default function OrderStatusPage({ params }: { params: { orderId: string } }) {
-  const [status, setStatus] = useState<OrderStatus | null>(null)
-  const [email, setEmail] = useState<string | null>(null)
+  const [order, setOrder] = useState<OrderData | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -28,8 +60,7 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
           return
         }
 
-        setStatus(data.status)
-        setEmail(data.email)
+        setOrder(data)
 
         if (data.status === 'pending') {
           timeoutId = setTimeout(poll, 4000)
@@ -46,47 +77,178 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
     }
   }, [params.orderId])
 
-  return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center px-6 py-20">
-      <Card className="max-w-md w-full p-8 text-center space-y-4">
-        {errorMsg ? (
-          <>
-            <XCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h1 className="font-display font-bold text-xl text-slate-900">Terjadi Kesalahan</h1>
-            <p className="text-slate-500 text-sm">{errorMsg}</p>
-          </>
-        ) : status === 'paid' ? (
-          <>
-            <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-            <h1 className="font-display font-bold text-xl text-slate-900">Pembayaran Berhasil!</h1>
-            <p className="text-slate-500 text-sm">
-              Kode lisensi sudah kami kirim ke email{' '}
-              <span className="font-semibold text-slate-700">{email}</span>. Cek inbox kamu (termasuk
-              folder spam/promosi).
-            </p>
-          </>
-        ) : status === 'pending' || status === null ? (
-          <>
-            <Clock className="w-12 h-12 text-amber-500 mx-auto animate-pulse" />
-            <h1 className="font-display font-bold text-xl text-slate-900">Menunggu Pembayaran</h1>
-            <p className="text-slate-500 text-sm">
-              Halaman ini akan otomatis diperbarui setelah pembayaran kamu kami terima.
-            </p>
-          </>
-        ) : (
-          <>
-            <XCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h1 className="font-display font-bold text-xl text-slate-900">Pembayaran Tidak Berhasil</h1>
-            <p className="text-slate-500 text-sm">
-              Status: {status}. Silakan coba lagi atau hubungi kami jika butuh bantuan.
-            </p>
-          </>
-        )}
+  const status = order?.status ?? null
+  const pkg = order ? PACKAGES[order.tier] : null
 
-        <Link href="/" className="inline-block pt-2">
-          <Button variant="secondary">Kembali ke Beranda</Button>
-        </Link>
-      </Card>
+  function copyOrderId() {
+    navigator.clipboard.writeText(params.orderId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const waText = encodeURIComponent(
+    `Halo, saya butuh bantuan untuk pesanan ${params.orderId} di NuansaPos.`
+  )
+
+  return (
+    <main className="min-h-screen bg-slate-50 flex items-center justify-center px-6 py-16">
+      <div className="max-w-md w-full space-y-6">
+        {/* Step indicator */}
+        <div className="flex items-center justify-center gap-2">
+          {STEPS.map((label, i) => {
+            const current = stepIndexFor(status)
+            const done = i < current || (i === current && status === 'paid')
+            const active = i === current && status !== 'paid'
+            return (
+              <div key={label} className="flex items-center gap-2">
+                <div className="flex flex-col items-center gap-1">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
+                      done
+                        ? 'bg-emerald-500 text-white'
+                        : active
+                          ? 'bg-brand text-white'
+                          : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {done ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                  </div>
+                  <span className="text-[10px] text-slate-500 whitespace-nowrap">{label}</span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className={`w-8 h-0.5 mb-4 ${done ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <Card className="p-8 text-center space-y-5">
+          <AnimatePresence mode="wait">
+            {errorMsg ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-3"
+              >
+                <XCircle className="w-14 h-14 text-red-500 mx-auto" />
+                <h1 className="font-display font-bold text-xl text-slate-900">Terjadi Kesalahan</h1>
+                <p className="text-slate-500 text-sm">{errorMsg}</p>
+              </motion.div>
+            ) : status === 'paid' && order && pkg ? (
+              <motion.div
+                key="paid"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', duration: 0.5 }}
+                className="space-y-5"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+                >
+                  <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
+                </motion.div>
+                <div>
+                  <h1 className="font-display font-bold text-2xl text-slate-900">Pembayaran Berhasil!</h1>
+                  <p className="text-slate-500 text-sm mt-1">Terima kasih, {order.customerName}.</p>
+                </div>
+
+                {/* Order summary */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Order ID</span>
+                    <button
+                      onClick={copyOrderId}
+                      className="flex items-center gap-1.5 font-mono text-xs text-slate-700 hover:text-brand transition-colors"
+                    >
+                      {params.orderId}
+                      {copied ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Paket</span>
+                    <span className="font-semibold text-slate-800">{pkg.name} (Lifetime)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Total Dibayar</span>
+                    <span className="font-semibold text-slate-800">{formatRupiah(order.price)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Maks. Perangkat</span>
+                    <span className="font-semibold text-slate-800">{pkg.maxDevices} HP</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-left">
+                  <Mail className="w-4 h-4 text-brand shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Kode lisensi sudah kami kirim ke{' '}
+                    <span className="font-semibold text-slate-800">{order.email}</span>. Cek inbox kamu
+                    (termasuk folder spam/promosi) dalam beberapa menit.
+                  </p>
+                </div>
+              </motion.div>
+            ) : status === 'pending' || status === null ? (
+              <motion.div
+                key="pending"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-3"
+              >
+                <div className="relative w-16 h-16 mx-auto">
+                  <Loader2 className="w-16 h-16 text-amber-500 animate-spin absolute inset-0" strokeWidth={1.5} />
+                  <Clock className="w-6 h-6 text-amber-500 absolute inset-0 m-auto" />
+                </div>
+                <h1 className="font-display font-bold text-xl text-slate-900">Menunggu Pembayaran</h1>
+                <p className="text-slate-500 text-sm">
+                  Halaman ini akan otomatis diperbarui setelah pembayaran kamu kami terima. Jangan tutup
+                  halaman ini.
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="failed"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-3"
+              >
+                <XCircle className="w-14 h-14 text-red-500 mx-auto" />
+                <h1 className="font-display font-bold text-xl text-slate-900">Pembayaran Tidak Berhasil</h1>
+                <p className="text-slate-500 text-sm">
+                  Status: <span className="font-semibold">{status}</span>. Silakan coba lagi atau hubungi
+                  kami jika butuh bantuan.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+            <a
+              href={`https://wa.me/${SITE_CONFIG.whatsappNumber}?text=${waText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1"
+            >
+              <Button variant="secondary" className="w-full !py-2.5 text-sm">
+                <MessageCircle className="w-4 h-4" />
+                Hubungi Kami
+              </Button>
+            </a>
+            <Link href="/" className="flex-1">
+              <Button variant="primary" className="w-full !py-2.5 text-sm">
+                Kembali ke Beranda
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
     </main>
   )
 }

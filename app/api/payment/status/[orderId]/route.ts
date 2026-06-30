@@ -5,7 +5,7 @@ export async function GET(request: Request, { params }: { params: { orderId: str
   try {
     const { data: order, error } = await supabase
       .from('orders')
-      .select('payment_status, tier, customer_email')
+      .select('payment_status, tier, price, customer_email, customer_name, midtrans_order_id, created_at, paid_at')
       .eq('midtrans_order_id', params.orderId)
       .maybeSingle();
 
@@ -19,7 +19,12 @@ export async function GET(request: Request, { params }: { params: { orderId: str
       success: true,
       status: order.payment_status,
       tier: order.tier,
+      price: order.price,
       email: order.customer_email,
+      customerName: order.customer_name,
+      orderId: order.midtrans_order_id,
+      createdAt: order.created_at,
+      paidAt: order.paid_at,
     });
   } catch (error: any) {
     return NextResponse.json(
