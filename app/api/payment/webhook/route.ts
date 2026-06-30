@@ -46,7 +46,10 @@ export async function POST(request: Request) {
 
     if (orderError) throw new Error(orderError.message);
     if (!order) {
-      return NextResponse.json({ message: 'Order tidak ditemukan' }, { status: 404 });
+      // Midtrans mewajibkan respons 200 untuk notifikasi apa pun (termasuk ping test dari
+      // dashboard yang pakai order_id fiktif) - balas non-200 bikin endpoint dianggap mati.
+      console.warn('Webhook menerima order_id yang tidak dikenal (diabaikan):', order_id);
+      return NextResponse.json({ message: 'Order tidak ditemukan, diabaikan' }, { status: 200 });
     }
 
     // 3. Idempotency - jangan proses ulang order yang sudah paid.
