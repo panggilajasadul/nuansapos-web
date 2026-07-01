@@ -14,63 +14,84 @@ export default function TermsPage() {
   return (
     <>
       <Navbar />
-      <main className="pt-32 pb-24">
+      <main className="pt-32 pb-24 bg-slate-50">
         <div className="max-w-3xl mx-auto px-6 space-y-8">
-          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-white">
-            Syarat &amp; Ketentuan
-          </h1>
-          <p className="text-slate-400 text-sm">Terakhir diperbarui: Juni 2026</p>
+          <div className="space-y-2">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors duration-150"
+            >
+              <span>←</span> Kembali ke Beranda
+            </Link>
+            <h1 className="font-display font-extrabold text-3xl md:text-4xl text-slate-900 pt-2">
+              Syarat &amp; Ketentuan
+            </h1>
+            <p className="text-slate-500 text-sm">Terakhir diperbarui: Juni 2026</p>
+          </div>
 
-          <div className="space-y-6 text-slate-300 text-sm md:text-base leading-relaxed">
-            <section className="space-y-2">
-              <h2 className="font-display font-bold text-xl text-white">1. Penerimaan Ketentuan</h2>
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-8 md:p-10 shadow-sm space-y-8 text-slate-600 text-sm md:text-base leading-relaxed">
+            <section className="space-y-3">
+              <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
+                1. Penerimaan Ketentuan
+              </h2>
               <p>
-                Dengan mengunduh dan menggunakan aplikasi {SITE_CONFIG.name}, Anda menyetujui
-                syarat dan ketentuan yang berlaku ini.
+                Dengan mengunduh dan menggunakan aplikasi <strong className="text-slate-900">{SITE_CONFIG.name}</strong>, Anda secara sadar dan penuh menyetujui syarat dan ketentuan penggunaan yang berlaku ini secara keseluruhan.
               </p>
             </section>
 
-            <section className="space-y-2">
-              <h2 className="font-display font-bold text-xl text-white">2. Penggunaan Layanan</h2>
+            <section className="space-y-3">
+              <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
+                2. Penggunaan Layanan
+              </h2>
               <p>
-                {SITE_CONFIG.name} disediakan untuk membantu operasional kasir dan manajemen
-                bisnis UMKM. Plan Gratis berlaku untuk batas 500 produk dan 5.000 transaksi.
-                Plan Premium dan Pro memberikan kapasitas dan fitur tambahan sesuai dengan
-                deskripsi masing-masing plan.
+                <strong className="text-slate-900">{SITE_CONFIG.name}</strong> disediakan untuk membantu mempermudah operasional kasir dan manajemen bisnis UMKM di Indonesia.
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                <li>
+                  <strong className="text-slate-900">Plan Gratis</strong> berlaku selamanya dengan batas kapasitas hingga 500 produk dan 5.000 transaksi.
+                </li>
+                <li>
+                  <strong className="text-slate-900">Plan Premium &amp; Pro</strong> memberikan kapasitas penyimpanan serta fitur-fitur tambahan tanpa batasan sesuai dengan detail masing-masing plan yang dibeli.
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
+                3. Tanggung Jawab Pengguna
+              </h2>
+              <p>
+                Demi keamanan data bisnis Anda, sebagai pengguna Anda bertanggung jawab penuh atas keamanan perangkat fisik Anda, PIN akun, serta pembuatan salinan cadangan data (backup data) secara berkala.
+              </p>
+              <p>
+                <strong className="text-slate-900">{SITE_CONFIG.name}</strong> bekerja secara offline-first dan tidak menyimpan data Anda di server kami. Oleh karena itu, kami tidak bertanggung jawab atas segala bentuk kehilangan data akibat kerusakan perangkat fisik tanpa adanya file backup.
               </p>
             </section>
 
-            <section className="space-y-2">
-              <h2 className="font-display font-bold text-xl text-white">3. Tanggung Jawab Pengguna</h2>
+            <section className="space-y-3">
+              <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
+                4. Perubahan Layanan
+              </h2>
               <p>
-                Pengguna bertanggung jawab atas keamanan perangkat, PIN akun, dan backup data
-                secara berkala. {SITE_CONFIG.name} tidak bertanggung jawab atas kehilangan data
-                akibat kerusakan perangkat tanpa backup.
+                Kami berhak untuk memperbarui fitur, harga paket lisensi, atau memperbarui syarat ketentuan ini dari waktu ke waktu. Setiap perubahan signifikan akan kami informasikan secara transparan melalui update aplikasi atau situs resmi kami.
               </p>
             </section>
 
-            <section className="space-y-2">
-              <h2 className="font-display font-bold text-xl text-white">4. Perubahan Layanan</h2>
+            <section className="space-y-3">
+              <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
+                5. Hubungi Kami
+              </h2>
               <p>
-                Kami dapat memperbarui fitur, harga, atau ketentuan ini dari waktu ke waktu.
-                Perubahan akan diinformasikan melalui aplikasi atau situs resmi kami.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <h2 className="font-display font-bold text-xl text-white">5. Hubungi Kami</h2>
-              <p>
-                Untuk pertanyaan terkait syarat dan ketentuan, silakan hubungi kami melalui{' '}
-                <a href={`mailto:${SITE_CONFIG.email}`} className="text-brand-light hover:underline">
+                Apabila Anda memiliki pertanyaan, kendala, atau membutuhkan klarifikasi lebih lanjut terkait syarat dan ketentuan ini, silakan hubungi tim kami secara langsung melalui email resmi di{' '}
+                <a
+                  href={`mailto:${SITE_CONFIG.email}`}
+                  className="text-brand hover:text-brand-dark font-medium underline decoration-brand/30 hover:decoration-brand transition-colors duration-150"
+                >
                   {SITE_CONFIG.email}
                 </a>.
               </p>
             </section>
           </div>
-
-          <Link href="/" className="inline-block text-brand-light hover:underline text-sm">
-            ← Kembali ke Beranda
-          </Link>
         </div>
       </main>
       <Footer />

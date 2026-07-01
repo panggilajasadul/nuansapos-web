@@ -5,10 +5,10 @@ export const SITE_CONFIG = {
   name: 'NuansaPos',
   tagline: 'Kasir Android untuk Semua Bisnis UMKM Indonesia',
   description: '100% Offline. 9 Jenis Bisnis. Siap pakai 5 menit.',
-  playStoreUrl: 'https://play.google.com/store/apps/details?id=com.nuansapos.app',
-  whatsappNumber: '6281234567890',
+  playStoreUrl: 'https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link',
+  whatsappNumber: '6281389709847',
   whatsappMessage: 'Halo, saya tertarik dengan NuansaPos. Boleh minta demo?',
-  email: 'halo@nuansapos.id',
+  email: 'nuansapos.noreply@gmail.com',
 }
 
 export const STATS = [

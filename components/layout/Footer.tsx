@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Facebook, Instagram, Youtube } from 'lucide-react'
+import { Facebook, Instagram, Youtube, Store } from 'lucide-react'
 import { SITE_CONFIG, FOOTER_LINKS } from '@/lib/constants'
 
 const SOCIAL_ICONS = {
@@ -15,8 +15,13 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Logo + tagline */}
           <div className="space-y-3 md:col-span-2">
-            <Link href="/" className="font-display font-bold text-xl text-slate-900">
-              Nuansa<span className="text-brand">Pos</span>
+            <Link href="/" className="flex items-center gap-2.5 font-display font-bold text-xl text-slate-900 group">
+              <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-dark to-brand text-white shadow-md shadow-brand/20 group-hover:scale-105 transition-transform duration-200">
+                <Store className="w-5 h-5" />
+              </div>
+              <span>
+                Nuansa<span className="text-brand">Pos</span>
+              </span>
             </Link>
             <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
               {SITE_CONFIG.tagline}. Bekerja 100% offline, data di HP Anda sendiri.
