@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { PhoneMockup } from '@/components/ui/PhoneMockup'
 import { SITE_CONFIG, TRUST_BADGES } from '@/lib/constants'
+import heroImage from '@/assets/image.png'
 
 // Stagger animation untuk child elements
 const container = {
@@ -96,7 +97,7 @@ export function Hero() {
           transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
           className="flex justify-center lg:justify-end"
         >
-          <PhoneMockup />
+          <PhoneMockup screenSrc={heroImage.src} />
         </motion.div>
       </div>
     </section>

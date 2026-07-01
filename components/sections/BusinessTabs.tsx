@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
+import Image from 'next/image'
 import { SectionWrapper } from '@/components/ui/SectionWrapper'
 import { BUSINESS_TYPES } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import fnbImage from '@/assets/fnb.png'
 
 export function BusinessTabs() {
   const [activeId, setActiveId] = useState(BUSINESS_TYPES[0].id)
@@ -100,17 +102,15 @@ export function BusinessTabs() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 16 }}
               transition={{ duration: 0.25, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-              className="rounded-2xl border border-slate-200 bg-white shadow-sm p-8 aspect-[4/3] flex items-center justify-center text-center"
+              className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex items-center justify-center p-1 md:p-2"
               style={{ borderColor: `${activeBusiness.color}44` }}
             >
-              <div className="space-y-3">
-                <div className="text-5xl" role="img" aria-label={`Ikon ${activeBusiness.label}`}>
-                  {activeBusiness.emoji}
-                </div>
-                <p className="text-slate-500 text-sm max-w-xs mx-auto">
-                  {activeBusiness.mockupDesc}
-                </p>
-              </div>
+              <Image
+                src={fnbImage}
+                alt={`${activeBusiness.label} Mockup Preview`}
+                className="w-full h-auto object-contain rounded-xl"
+                priority
+              />
             </motion.div>
           </AnimatePresence>
         </div>

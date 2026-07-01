@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Store } from 'lucide-react'
+import Image from 'next/image'
+import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SITE_CONFIG, NAV_LINKS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import logoImage from '@/assets/nuansapos icon.png'
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -29,8 +31,15 @@ export function Navbar() {
       <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 font-display font-bold text-xl text-slate-900 group">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-dark to-brand text-white shadow-md shadow-brand/20 group-hover:scale-105 transition-transform duration-200">
-            <Store className="w-5 h-5" />
+          <div className="relative w-8 h-8 shrink-0 group-hover:scale-105 transition-transform duration-200">
+            <Image
+              src={logoImage}
+              alt="NuansaPos Logo"
+              fill
+              className="object-contain"
+              sizes="32px"
+              priority
+            />
           </div>
           <span>
             Nuansa<span className="text-brand">Pos</span>

@@ -1,6 +1,8 @@
 import Link from 'next/link'
-import { Facebook, Instagram, Youtube, Store } from 'lucide-react'
+import Image from 'next/image'
+import { Facebook, Instagram, Youtube } from 'lucide-react'
 import { SITE_CONFIG, FOOTER_LINKS } from '@/lib/constants'
+import logoImage from '@/assets/nuansapos icon.png'
 
 const SOCIAL_ICONS = {
   Instagram,
@@ -16,8 +18,14 @@ export function Footer() {
           {/* Logo + tagline */}
           <div className="space-y-3 md:col-span-2">
             <Link href="/" className="flex items-center gap-2.5 font-display font-bold text-xl text-slate-900 group">
-              <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-dark to-brand text-white shadow-md shadow-brand/20 group-hover:scale-105 transition-transform duration-200">
-                <Store className="w-5 h-5" />
+              <div className="relative w-8 h-8 shrink-0 group-hover:scale-105 transition-transform duration-200">
+                <Image
+                  src={logoImage}
+                  alt="NuansaPos Logo"
+                  fill
+                  className="object-contain"
+                  sizes="32px"
+                />
               </div>
               <span>
                 Nuansa<span className="text-brand">Pos</span>

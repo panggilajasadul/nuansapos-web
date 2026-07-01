@@ -44,14 +44,14 @@ export function PhoneMockup({ screenSrc, alt = 'Tampilan aplikasi NuansaPos' }: 
         </div>
 
         {/* Screen */}
-        <div className="rounded-[28px] overflow-hidden bg-slate-950 aspect-[9/19]">
+        <div className="rounded-[22px] overflow-hidden bg-black aspect-[9/19]">
           {screenSrc ? (
             <Image
               src={screenSrc}
               alt={alt}
               width={260}
               height={550}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               priority
             />
           ) : (
