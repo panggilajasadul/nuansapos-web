@@ -7,21 +7,6 @@ import { Button } from '@/components/ui/Button'
 import { BUSINESS_TYPES } from '@/lib/constants'
 import type { PackageTier } from '@/lib/packages'
 
-declare global {
-  interface Window {
-    snap?: {
-      pay: (
-        token: string,
-        callbacks: {
-          onSuccess?: (result: unknown) => void
-          onPending?: (result: unknown) => void
-          onError?: (result: unknown) => void
-          onClose?: () => void
-        }
-      ) => void
-    }
-  }
-}
 
 const inputClass =
   'w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand transition-colors'

@@ -81,6 +81,9 @@ export async function POST(request: Request) {
       customerPhone: cleanWhatsapp,
     });
 
+    // Simpan snap_token supaya user bisa lanjutkan pembayaran jika popup ditutup
+    await supabase.from('orders').update({ snap_token: token }).eq('midtrans_order_id', midtransOrderId);
+
     return NextResponse.json({
       success: true,
       token,

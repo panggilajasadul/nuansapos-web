@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Script from 'next/script'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckCircle2,
@@ -12,12 +13,14 @@ import {
   Mail,
   MessageCircle,
   Loader2,
+  CreditCard,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PACKAGES } from '@/lib/packages'
 import { SITE_CONFIG } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
+
 
 type OrderStatus = 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
 
@@ -44,6 +47,40 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
   const [order, setOrder] = useState<OrderData | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [isResuming, setIsResuming] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
+
+  const snapSrc =
+    process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
+      ? 'https://app.midtrans.com/snap/snap.js'
+      : 'https://app.sandbox.midtrans.com/snap/snap.js'
+
+  async function handleResumePayment() {
+    setIsResuming(true)
+    setResumeError(null)
+    try {
+      const res = await fetch(`/api/payment/resume?orderId=${params.orderId}`)
+      const data = await res.json()
+      if (!data.success) {
+        setResumeError(data.message || 'Gagal mendapatkan token pembayaran')
+        return
+      }
+      if (!window.snap) {
+        setResumeError('Komponen pembayaran belum siap, coba lagi dalam beberapa detik.')
+        return
+      }
+      window.snap.pay(data.token, {
+        onSuccess: () => window.location.reload(),
+        onPending: () => window.location.reload(),
+        onError: () => setResumeError('Pembayaran gagal. Silakan coba lagi.'),
+        onClose: () => {},
+      })
+    } catch {
+      setResumeError('Gagal terhubung ke server. Periksa koneksi kamu.')
+    } finally {
+      setIsResuming(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -92,6 +129,11 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
 
   return (
     <main className="min-h-screen bg-slate-50 flex items-center justify-center px-6 py-16">
+      <Script
+        src={snapSrc}
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        strategy="afterInteractive"
+      />
       <div className="max-w-md w-full space-y-6">
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-2">
@@ -200,7 +242,7 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
                 key="pending"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="space-y-3"
+                className="space-y-4"
               >
                 <div className="relative w-16 h-16 mx-auto">
                   <Loader2 className="w-16 h-16 text-amber-500 animate-spin absolute inset-0" strokeWidth={1.5} />
@@ -208,9 +250,28 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
                 </div>
                 <h1 className="font-display font-bold text-xl text-slate-900">Menunggu Pembayaran</h1>
                 <p className="text-slate-500 text-sm">
-                  Halaman ini akan otomatis diperbarui setelah pembayaran kamu kami terima. Jangan tutup
-                  halaman ini.
+                  Halaman ini akan otomatis diperbarui setelah pembayaran kamu kami terima.
                 </p>
+                {status === 'pending' && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      onClick={handleResumePayment}
+                      disabled={isResuming}
+                    >
+                      {isResuming ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CreditCard className="w-4 h-4" />
+                      )}
+                      {isResuming ? 'Memuat...' : 'Lanjutkan Pembayaran'}
+                    </Button>
+                    {resumeError && (
+                      <p className="text-xs text-red-500 text-center">{resumeError}</p>
+                    )}
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
