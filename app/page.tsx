@@ -6,6 +6,7 @@ import { ProblemSolution } from '@/components/sections/ProblemSolution'
 import { BusinessTabs } from '@/components/sections/BusinessTabs'
 import { FeatureBento } from '@/components/sections/FeatureBento'
 import { Pricing } from '@/components/sections/Pricing'
+import { ResellerTeaser } from '@/components/sections/ResellerTeaser'
 import { Testimonials } from '@/components/sections/Testimonials'
 import { FAQ } from '@/components/sections/FAQ'
 import { FinalCTA } from '@/components/sections/FinalCTA'
@@ -21,6 +22,7 @@ export default function Home() {
         <BusinessTabs />
         <FeatureBento />
         <Pricing />
+        <ResellerTeaser />
         <Testimonials />
         <FAQ />
         <FinalCTA />
