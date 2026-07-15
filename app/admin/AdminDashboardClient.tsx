@@ -21,7 +21,13 @@ import {
   X,
   Database,
   Trash2,
-  Lock
+  Lock,
+  Users,
+  TrendingUp,
+  Percent,
+  Calendar,
+  ChevronRight,
+  ExternalLink
 } from 'lucide-react';
 import {
   logoutAction,
@@ -29,8 +35,11 @@ import {
   listLicensesAction,
   resetActivationsAction,
   deleteLicenseAction,
-  listOrdersAction
+  listOrdersAction,
+  generateResellerLicensesAction
 } from './actions';
+import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
 import apkQrImage from '@/assets/nuasapos-apk.png';
 import { formatRupiah } from '@/lib/utils';
 
@@ -91,7 +100,7 @@ async function computeHMACSHA256(secret: string, message: string): Promise<Uint8
 }
 
 export default function AdminDashboardClient() {
-  const [activeTab, setActiveTab] = useState<'generator' | 'decoder' | 'manager' | 'orders'>('generator');
+  const [activeTab, setActiveTab] = useState<'generator' | 'decoder' | 'manager' | 'orders' | 'reseller-gen' | 'reseller-track'>('generator');
   
   // Generator State
   const [menuOpen, setMenuOpen] = useState(false);
@@ -107,6 +116,21 @@ export default function AdminDashboardClient() {
   const [licenseKey, setLicenseKey] = useState('');
   const [copied, setCopied] = useState(false);
   const [receiptDate, setReceiptDate] = useState('');
+
+  // Reseller Generator State
+  const [resellerQty, setResellerQty] = useState<number>(50);
+  const [resellerBusinessName, setResellerBusinessName] = useState('Mitra Reseller');
+  const [resellerCustomerName, setResellerCustomerName] = useState('Abdul Hamid');
+  const [isGeneratingReseller, setIsGeneratingReseller] = useState(false);
+  const [generatedResellerLicenses, setGeneratedResellerLicenses] = useState<string[]>([]);
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [resellerSearch, setResellerSearch] = useState('');
+  const [copiedResellerIndex, setCopiedResellerIndex] = useState<number | null>(null);
+
+  // Reseller Tracker State
+  const [resellerTrackSearch, setResellerTrackSearch] = useState('');
+  const [selectedResellerGroup, setSelectedResellerGroup] = useState<any | null>(null);
 
   // Decoder State
   const [decodeKey, setDecodeKey] = useState('');
@@ -138,9 +162,9 @@ export default function AdminDashboardClient() {
     setReceiptDate(formatted);
   }, [licenseKey]);
 
-  // Load licenses list when manager tab is open
+  // Load licenses list when manager or reseller-track tab is open
   useEffect(() => {
-    if (activeTab === 'manager') {
+    if (activeTab === 'manager' || activeTab === 'reseller-track') {
       fetchLicenses();
     }
     if (activeTab === 'orders') {
@@ -387,6 +411,193 @@ export default function AdminDashboardClient() {
     window.location.href = '/admin/login';
   };
 
+  // Reseller Generator Logic
+  const handleGenerateReseller = async () => {
+    if (resellerQty < 1) {
+      alert('Jumlah lisensi minimal 1.');
+      return;
+    }
+    setIsGeneratingReseller(true);
+    try {
+      const res = await generateResellerLicensesAction({
+        qty: resellerQty,
+        businessName: resellerBusinessName.trim(),
+        customerName: resellerCustomerName.trim(),
+      });
+
+      if (res.success) {
+        setGeneratedResellerLicenses(res.data);
+        alert(`Berhasil membuat ${resellerQty} lisensi reseller!`);
+      } else {
+        alert('Gagal generate lisensi: ' + res.error);
+      }
+    } catch (err: any) {
+      alert('Terjadi kesalahan: ' + err.message);
+    } finally {
+      setIsGeneratingReseller(false);
+    }
+  };
+
+  const handleCopyAllReseller = () => {
+    navigator.clipboard.writeText(generatedResellerLicenses.join('\n'));
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
+
+  const handleDownloadResellerExcel = () => {
+    const data = generatedResellerLicenses.map((lic, index) => ({
+      'No': index + 1,
+      'Kode Lisensi': lic,
+      'Tipe Paket': 'NuansaPos PRO',
+      'Maksimal HP': 3,
+      'Pemilik Reseller': resellerCustomerName,
+      'Tanggal Pembuatan': new Date().toLocaleDateString('id-ID'),
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    worksheet['!cols'] = [
+      { wch: 6 },   // No
+      { wch: 35 },  // Kode Lisensi
+      { wch: 18 },  // Tipe Paket
+      { wch: 15 },  // Maksimal HP
+      { wch: 25 },  // Pemilik Reseller
+      { wch: 20 }   // Tanggal Pembuatan
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Lisensi Reseller');
+    XLSX.writeFile(workbook, `lisensi-reseller-${resellerCustomerName.replace(/\s+/g, '_')}-${resellerQty}.xlsx`);
+  };
+
+  const handleDownloadResellerCSV = () => {
+    const csvHeader = "No,Kode Lisensi,Tipe Paket,Maksimal HP,Pemilik Reseller,Tanggal Pembuatan\n";
+    const csvRows = generatedResellerLicenses.map((lic, index) => {
+      return `${index + 1},${lic},NuansaPos PRO,3,${resellerCustomerName.replace(/,/g, '')},${new Date().toLocaleDateString('id-ID')}`;
+    }).join("\n");
+    const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `lisensi-reseller-${resellerCustomerName.replace(/\s+/g, '_')}-${resellerQty}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadResellerPDF = () => {
+    const doc = new jsPDF();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("Daftar Lisensi Reseller NuansaPos", 14, 20);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Mitra Reseller: ${resellerCustomerName}`, 14, 28);
+    doc.text(`Nama Kemitraan: ${resellerBusinessName}`, 14, 34);
+    doc.text(`Tanggal Generate: ${new Date().toLocaleDateString('id-ID')}`, 14, 40);
+    doc.text(`Jumlah Lisensi: ${resellerQty} Lisensi PRO (3 HP)`, 14, 46);
+    
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, 52, 196, 52);
+    
+    let y = 60;
+    doc.setFontSize(9);
+    generatedResellerLicenses.forEach((lic, index) => {
+      if (y > 280) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text(`${index + 1}.`, 14, y);
+      doc.setFont("courier", "bold");
+      doc.text(lic, 25, y);
+      doc.setFont("helvetica", "normal");
+      doc.text("NuansaPos PRO (3 HP)", 90, y);
+      y += 7;
+    });
+    
+    doc.save(`lisensi-reseller-${resellerCustomerName.replace(/\s+/g, '_')}-${resellerQty}.pdf`);
+  };
+
+  const handleSendResellerWhatsApp = () => {
+    let cleanPhone = whatsappNumber.trim().replace(/[^0-9]/g, '');
+    if (!cleanPhone) {
+      alert('Masukkan nomor WhatsApp yang valid.');
+      return;
+    }
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '62' + cleanPhone.substring(1);
+    }
+    
+    const maxTextLicenses = generatedResellerLicenses.slice(0, 100);
+    let licenseText = maxTextLicenses.map((lic, index) => `${index + 1}. ${lic}`).join('\n');
+    
+    if (generatedResellerLicenses.length > 100) {
+      licenseText += `\n... Dan ${generatedResellerLicenses.length - 100} lisensi lainnya (silakan unduh file Excel/PDF).`;
+    }
+
+    const message = `Halo ${resellerCustomerName}!\n\nBerikut adalah daftar ${generatedResellerLicenses.length} lisensi NuansaPos PRO untuk bisnis Anda (${resellerBusinessName}):\n\n${licenseText}\n\nTerima kasih atas kerja samanya!`;
+    const encodedText = encodeURIComponent(message);
+    const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+    window.open(waUrl, '_blank');
+  };
+
+  // Process licenses into reseller groups
+  const getResellersList = () => {
+    const resellerMap: Record<string, {
+      customerName: string;
+      businessName: string;
+      totalLicenses: number;
+      activeLicenses: number;
+      createdDates: Date[];
+      licenses: any[];
+    }> = {};
+
+    licenses.forEach((lic) => {
+      const custName = (lic.customerName || '').trim();
+      const busName = (lic.businessName || '').trim();
+      
+      if (!custName && !busName) return;
+
+      const groupKey = `${custName.toLowerCase()}|||${busName.toLowerCase()}`;
+      
+      if (!resellerMap[groupKey]) {
+        resellerMap[groupKey] = {
+          customerName: custName || 'Tanpa Nama',
+          businessName: busName || 'Tanpa Nama Bisnis',
+          totalLicenses: 0,
+          activeLicenses: 0,
+          createdDates: [],
+          licenses: [],
+        };
+      }
+
+      resellerMap[groupKey].totalLicenses += 1;
+      if (lic.activatedDevicesCount > 0) {
+        resellerMap[groupKey].activeLicenses += 1;
+      }
+      if (lic.createdAt) {
+        resellerMap[groupKey].createdDates.push(new Date(lic.createdAt));
+      }
+      resellerMap[groupKey].licenses.push(lic);
+    });
+
+    return Object.values(resellerMap)
+      .map(group => {
+        const sortedDates = group.createdDates.sort((a, b) => a.getTime() - b.getTime());
+        const joinDate = sortedDates.length > 0 ? sortedDates[0] : new Date();
+        return {
+          ...group,
+          joinDate,
+        };
+      })
+      .filter(group => {
+        const isResellerName = 
+          group.businessName.toLowerCase().includes('reseller') || 
+          group.customerName.toLowerCase().includes('reseller') || 
+          group.businessName.toLowerCase().includes('mitra');
+        return group.totalLicenses >= 2 || isResellerName;
+      })
+      .sort((a, b) => b.totalLicenses - a.totalLicenses);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-body">
       {/* Navigation Header (Hidden on Print) */}
@@ -451,6 +662,28 @@ export default function AdminDashboardClient() {
               >
                 <FileText className="w-3.5 h-3.5" />
                 Pesanan
+              </button>
+              <button
+                onClick={() => setActiveTab('reseller-gen')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+                  activeTab === 'reseller-gen'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Building className="w-3.5 h-3.5" />
+                Reseller Gen
+              </button>
+              <button
+                onClick={() => setActiveTab('reseller-track')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+                  activeTab === 'reseller-track'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                Tracking Reseller
               </button>
             </div>
 
@@ -538,6 +771,34 @@ export default function AdminDashboardClient() {
               >
                 <FileText className="w-4 h-4" />
                 Pesanan
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('reseller-gen');
+                  setMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2.5 transition-all ${
+                  activeTab === 'reseller-gen'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Building className="w-4 h-4" />
+                Reseller Gen
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('reseller-track');
+                  setMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2.5 transition-all ${
+                  activeTab === 'reseller-track'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                Tracking Reseller
               </button>
             </div>
 
@@ -1494,6 +1755,572 @@ export default function AdminDashboardClient() {
             </motion.div>
           </div>
         )}
+
+        {/* TAB 5: GENERATOR LISENSI RESELLER (BULK) */}
+        {activeTab === 'reseller-gen' && (
+          <div className="lg:col-span-12 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-6 space-y-6"
+            >
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60">
+                <Building className="w-5 h-5 text-brand" />
+                <div>
+                  <h2 className="font-display font-semibold text-lg text-slate-900">Generator Lisensi Reseller (Bulk)</h2>
+                  <p className="text-[11px] text-slate-500">Menerbitkan lisensi PRO massal secara instan untuk mitra reseller.</p>
+                </div>
+              </div>
+
+              {/* Form Input */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">Nama Reseller / Pelanggan</label>
+                  <input
+                    type="text"
+                    value={resellerCustomerName}
+                    onChange={(e) => setResellerCustomerName(e.target.value)}
+                    placeholder="Contoh: Abdul Hamid"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">Nama Bisnis / Kemitraan</label>
+                  <input
+                    type="text"
+                    value={resellerBusinessName}
+                    onChange={(e) => setResellerBusinessName(e.target.value)}
+                    placeholder="Contoh: Mitra Reseller Kalimantan"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">Jumlah Lisensi PRO</label>
+                  <select
+                    value={resellerQty}
+                    onChange={(e) => setResellerQty(parseInt(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-brand"
+                  >
+                    <option value={50}>50 Lisensi (Paket 6 Juta)</option>
+                    <option value={100}>100 Lisensi (Paket 11 Juta)</option>
+                    <option value={500}>500 Lisensi (Paket 40 Juta)</option>
+                    <option value={1000}>1000 Lisensi (Paket 60 Juta)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerateReseller}
+                disabled={isGeneratingReseller}
+                className="w-full bg-brand hover:bg-brand-dark text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-brand/20 disabled:opacity-50"
+              >
+                {isGeneratingReseller ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Key className="w-4 h-4" />
+                    <span>Generate & Daftarkan Lisensi Reseller</span>
+                  </>
+                )}
+              </button>
+
+              {/* Action & Result Section */}
+              {generatedResellerLicenses.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6 pt-4 border-t border-slate-200/60"
+                >
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-sm font-bold text-emerald-800">
+                        Berhasil Menerbitkan {generatedResellerLicenses.length} Lisensi!
+                      </h4>
+                      <p className="text-xs text-emerald-600 leading-relaxed mt-0.5">
+                        Semua lisensi aktif (PRO, 3 HP) telah terdaftar di database Supabase atas nama {resellerCustomerName}.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleCopyAllReseller}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        {copiedAll ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedAll ? 'Tersalin!' : 'Salin Semua'}
+                      </button>
+                      <button
+                        onClick={handleDownloadResellerExcel}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                        Excel
+                      </button>
+                      <button
+                        onClick={handleDownloadResellerCSV}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        CSV
+                      </button>
+                      <button
+                        onClick={handleDownloadResellerPDF}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-red-650" />
+                        PDF
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Form Kirim WhatsApp */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Kirim Kode Lisensi ke WhatsApp Reseller</h4>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={whatsappNumber}
+                          onChange={(e) => setWhatsappNumber(e.target.value)}
+                          placeholder="Masukkan No WA (contoh: 08123456789 atau 628123456789)"
+                          className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-brand"
+                        />
+                      </div>
+                      <button
+                        onClick={handleSendResellerWhatsApp}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-emerald-600/10 flex items-center justify-center gap-1.5"
+                      >
+                        <span>Kirim via WhatsApp</span>
+                      </button>
+                    </div>
+                    {generatedResellerLicenses.length > 100 && (
+                      <p className="text-[10px] text-amber-600 leading-relaxed font-semibold">
+                        ⚠️ Perhatian: Jumlah lisensi sangat banyak ({generatedResellerLicenses.length} lisensi). WhatsApp membatasi panjang teks pesan. Sangat disarankan untuk mengunduh Excel/PDF di atas dan mengirimkannya sebagai file lampiran.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* List / Searchable Table of licenses */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Daftar Lisensi Yang Baru Dibuat</h4>
+                      <input
+                        type="text"
+                        placeholder="Cari kode..."
+                        value={resellerSearch}
+                        onChange={(e) => setResellerSearch(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-brand w-48 text-slate-850"
+                      />
+                    </div>
+
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white max-h-[400px] overflow-y-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                            <th className="py-2.5 px-4 w-12">No</th>
+                            <th className="py-2.5 px-4">Kode Lisensi</th>
+                            <th className="py-2.5 px-4">Tipe</th>
+                            <th className="py-2.5 px-4 w-16 text-center">Salin</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-mono">
+                          {generatedResellerLicenses
+                            .filter(lic => lic.toLowerCase().includes(resellerSearch.toLowerCase()))
+                            .map((lic, index) => (
+                              <tr key={lic} className="hover:bg-slate-50">
+                                <td className="py-2 px-4 text-slate-500">{index + 1}</td>
+                                <td className="py-2 px-4 font-bold text-slate-800 select-all">{lic}</td>
+                                <td className="py-2 px-4 text-slate-600 font-sans">PRO (3 HP)</td>
+                                <td className="py-2 px-4 text-center">
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(lic);
+                                      setCopiedResellerIndex(index);
+                                      setTimeout(() => setCopiedResellerIndex(null), 2000);
+                                    }}
+                                    className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition-colors"
+                                  >
+                                    {copiedResellerIndex === index ? (
+                                      <Check className="w-3.5 h-3.5 text-emerald-600 inline" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5 inline" />
+                                    )}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          </div>
+        )}
+
+        {/* TAB 6: TRACKING MITRA RESELLER */}
+        {activeTab === 'reseller-track' && (
+          <div className="lg:col-span-12 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-6 space-y-6"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200/60">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-brand" />
+                  <div>
+                    <h2 className="font-display font-semibold text-lg text-slate-900">Tracking Kemitraan Reseller</h2>
+                    <p className="text-[11px] text-slate-500">Monitoring data lisensi aktif, kuota penjualan, dan detail pemanfaatan kunci oleh mitra reseller.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={fetchLicenses}
+                  disabled={isLicensesLoading}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl border border-slate-200/50 flex items-center justify-center transition-all disabled:opacity-50"
+                  title="Segarkan data"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLicensesLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              {/* Statistics Cards */}
+              {(() => {
+                const list = getResellersList();
+                const totalResellers = list.length;
+                const totalLicenses = list.reduce((sum, r) => sum + r.totalLicenses, 0);
+                const totalActive = list.reduce((sum, r) => sum + r.activeLicenses, 0);
+                const avgActivePct = totalLicenses > 0 ? Math.round((totalActive / totalLicenses) * 100) : 0;
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Total Reseller</span>
+                        <span className="font-display font-bold text-sm md:text-base text-slate-900 block mt-0.5">{totalResellers} Mitra</span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-brand/5 flex items-center justify-center text-brand">
+                        <Key className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Total Lisensi Beli</span>
+                        <span className="font-display font-bold text-sm md:text-base text-slate-900 block mt-0.5">{totalLicenses} Keys</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Lisensi Terpakai</span>
+                        <span className="font-display font-bold text-sm md:text-base text-emerald-600 block mt-0.5">{totalActive} Active</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-650">
+                        <Percent className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Rasio Aktivasi</span>
+                        <span className="font-display font-bold text-sm md:text-base text-purple-600 block mt-0.5">{avgActivePct}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Search Control */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Daftar Mitra Reseller</h4>
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Cari reseller atau nama bisnis..."
+                    value={resellerTrackSearch}
+                    onChange={(e) => setResellerTrackSearch(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3.5 pl-10 text-xs focus:outline-none focus:border-brand text-slate-850"
+                  />
+                </div>
+              </div>
+
+              {/* Reseller Main Table */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                      <th className="py-3 px-4 w-12 text-center">No</th>
+                      <th className="py-3 px-4">Nama Reseller</th>
+                      <th className="py-3 px-4">Nama Bisnis / Kelompok</th>
+                      <th className="py-3 px-4 text-center">Total Beli</th>
+                      <th className="py-3 px-4 text-center">Terpakai (Aktif)</th>
+                      <th className="py-3 px-4 text-center">Sisa Stok</th>
+                      <th className="py-3 px-4">Persentase Aktif</th>
+                      <th className="py-3 px-4 text-center">Tanggal Join</th>
+                      <th className="py-3 px-4 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(() => {
+                      const filteredResellers = getResellersList().filter(
+                        (r) =>
+                          r.customerName.toLowerCase().includes(resellerTrackSearch.toLowerCase()) ||
+                          r.businessName.toLowerCase().includes(resellerTrackSearch.toLowerCase())
+                      );
+
+                      if (filteredResellers.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={9} className="py-8 text-center text-slate-400">
+                              Tidak ada data reseller ditemukan.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return filteredResellers.map((reseller, index) => {
+                        const unused = reseller.totalLicenses - reseller.activeLicenses;
+                        const pct = reseller.totalLicenses > 0 
+                          ? Math.round((reseller.activeLicenses / reseller.totalLicenses) * 100)
+                          : 0;
+
+                        return (
+                          <tr key={index} className="hover:bg-slate-50">
+                            <td className="py-3 px-4 text-slate-500 text-center">{index + 1}</td>
+                            <td className="py-3 px-4 font-bold text-slate-800">{reseller.customerName}</td>
+                            <td className="py-3 px-4 text-slate-600 font-semibold">{reseller.businessName}</td>
+                            <td className="py-3 px-4 text-center font-bold text-slate-800">{reseller.totalLicenses}</td>
+                            <td className="py-3 px-4 text-center text-emerald-600 font-bold">{reseller.activeLicenses}</td>
+                            <td className="py-3 px-4 text-center text-amber-600 font-bold">{unused}</td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div 
+                                    className="bg-brand h-full rounded-full" 
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className="font-bold text-[10px] text-slate-600">{pct}%</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-center font-sans text-slate-500">
+                              {reseller.joinDate.toLocaleDateString('id-ID', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => setSelectedResellerGroup(reseller)}
+                                className="bg-brand/5 hover:bg-brand text-brand hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm"
+                              >
+                                Detail Keys
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+      {/* DETAIL MODAL FOR RESELLER KEYS */}
+      <AnimatePresence>
+        {selectedResellerGroup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col border border-slate-100"
+            >
+              {/* Header */}
+              <div className="bg-slate-50 px-6 py-5 border-b border-slate-200/60 flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="font-display font-bold text-base text-slate-900">
+                    Lisensi: {selectedResellerGroup.customerName}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                    Kelompok/Usaha: <span className="text-brand">{selectedResellerGroup.businessName}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedResellerGroup(null)}
+                  className="p-1.5 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-xl transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Subheader / Summary Stats */}
+              <div className="bg-white px-6 py-4 border-b border-slate-100 flex flex-wrap gap-6 items-center shrink-0 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Total Lisensi</span>
+                  <span className="font-bold text-slate-800 text-sm">{selectedResellerGroup.totalLicenses} Keys</span>
+                </div>
+                <div className="h-6 w-px bg-slate-200" />
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Lisensi Aktif</span>
+                  <span className="font-bold text-emerald-600 text-sm">{selectedResellerGroup.activeLicenses} Active</span>
+                </div>
+                <div className="h-6 w-px bg-slate-200" />
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Tersedia (Sisa)</span>
+                  <span className="font-bold text-amber-600 text-sm">
+                    {selectedResellerGroup.totalLicenses - selectedResellerGroup.activeLicenses} Keys
+                  </span>
+                </div>
+                <div className="h-6 w-px bg-slate-200" />
+                <div>
+                  <span className="text-slate-400 block text-[9px] uppercase font-bold">Persentase Penggunaan</span>
+                  <span className="font-bold text-purple-600 text-sm">
+                    {selectedResellerGroup.totalLicenses > 0 
+                      ? Math.round((selectedResellerGroup.activeLicenses / selectedResellerGroup.totalLicenses) * 100) 
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Body Table */}
+              <div className="flex-1 overflow-y-auto p-6 min-h-[250px]">
+                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white max-h-[400px] overflow-y-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 sticky top-0">
+                        <th className="py-2.5 px-4 w-12 text-center">No</th>
+                        <th className="py-2.5 px-4">Kode Lisensi</th>
+                        <th className="py-2.5 px-4 text-center">Tipe</th>
+                        <th className="py-2.5 px-4 text-center">Batas Perangkat</th>
+                        <th className="py-2.5 px-4 text-center">Status</th>
+                        <th className="py-2.5 px-4">Detail Perangkat Terdaftar</th>
+                        <th className="py-2.5 px-4 w-16 text-center">Salin</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {selectedResellerGroup.licenses.map((lic: any, idx: number) => {
+                        const isActive = lic.activatedDevicesCount > 0;
+                        return (
+                          <tr key={lic.id} className="hover:bg-slate-50 text-[11px]">
+                            <td className="py-2.5 px-4 text-slate-500 text-center">{idx + 1}</td>
+                            <td className="py-2.5 px-4 font-bold text-slate-800 select-all">{lic.licenseKey}</td>
+                            <td className="py-2.5 px-4 text-center text-slate-600 font-sans">PRO</td>
+                            <td className="py-2.5 px-4 text-center text-slate-600 font-sans">{lic.maxDevices} HP</td>
+                            <td className="py-2.5 px-4 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase font-sans border ${
+                                isActive
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}>
+                                {isActive ? 'Aktif' : 'Ready'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 font-sans text-slate-600">
+                              {isActive ? (
+                                <div className="space-y-1">
+                                  {lic.devices.map((dev: any, dIdx: number) => (
+                                    <div key={dIdx} className="flex items-center gap-1.5 text-[10px]">
+                                      <span className="font-mono bg-slate-100 text-slate-700 px-1 py-0.5 rounded">
+                                        {dev.deviceId}
+                                      </span>
+                                      <span className="text-slate-400">
+                                        ({new Date(dev.activatedAt).toLocaleDateString('id-ID', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })})
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[10px]">Belum diaktivasi pelanggan</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-sans">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(lic.licenseKey);
+                                  alert('Kode lisensi disalin!');
+                                }}
+                                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 transition-colors"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Footer Excel download for specific reseller */}
+              <div className="bg-slate-50 px-6 py-4 border-t border-slate-200/60 flex justify-end gap-3 shrink-0">
+                <button
+                  onClick={() => {
+                    const data = selectedResellerGroup.licenses.map((lic: any, index: number) => ({
+                      'No': index + 1,
+                      'Kode Lisensi': lic.licenseKey,
+                      'Tipe': 'PRO',
+                      'Maksimal HP': lic.maxDevices,
+                      'Status': lic.activatedDevicesCount > 0 ? 'Aktif' : 'Belum Aktif',
+                      'Jumlah HP Terdaftar': lic.activatedDevicesCount,
+                      'Daftar Device ID': lic.devices.map((d: any) => d.deviceId).join(', ')
+                    }));
+                    const worksheet = XLSX.utils.json_to_sheet(data);
+                    worksheet['!cols'] = [
+                      { wch: 6 },   // No
+                      { wch: 35 },  // Kode Lisensi
+                      { wch: 10 },  // Tipe
+                      { wch: 15 },  // Maksimal HP
+                      { wch: 15 },  // Status
+                      { wch: 20 },  // Jumlah HP Terdaftar
+                      { wch: 35 }   // Daftar Device ID
+                    ];
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Lisensi Reseller');
+                    XLSX.writeFile(workbook, `lisensi-reseller-${selectedResellerGroup.customerName.replace(/\s+/g, '_')}.xlsx`);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/10 flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Unduh Excel (.xlsx)
+                </button>
+                <button
+                  onClick={() => setSelectedResellerGroup(null)}
+                  className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </main>
 
       {/* Dynamic print-media page margin style override */}

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import { verifyNotificationSignature } from '@/lib/midtrans';
-import { sendLicenseEmail } from '@/lib/email';
-import type { PackageTier } from '@/lib/packages';
+import { sendLicenseEmail, sendResellerLicenseEmail } from '@/lib/email';
+import { getPackageDetails, type PackageTier } from '@/lib/packages';
 
 const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
@@ -102,46 +103,131 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Order sudah diproses oleh notifikasi lain' }, { status: 200 });
     }
 
-    const tier = order.tier as PackageTier;
-    const licenseKey = generateOnlineLicenseKey(tier);
+    const isReseller = order.business_type === 'reseller';
 
-    const { data: newLicense, error: licenseError } = await supabase
-      .from('licenses')
-      .insert({
-        license_key: licenseKey,
-        tier,
-        max_devices: order.max_devices,
-        business_name: order.business_name || order.customer_name,
-        customer_name: order.customer_name,
-      })
-      .select('*')
-      .single();
+    if (isReseller) {
+      // Reseller flow: generate multiple licenses, write Excel file, and attach it to the email
+      const resellerPkg = getPackageDetails(order.business_name || '');
+      const qty = resellerPkg ? resellerPkg.qty : 100; // default to 100 if package not found
 
-    if (licenseError) throw new Error(licenseError.message);
+      const licensesToInsert = [];
+      const licenseKeys = [];
+      for (let i = 0; i < qty; i++) {
+        const key = generateOnlineLicenseKey('PRO');
+        licenseKeys.push(key);
+        licensesToInsert.push({
+          license_key: key,
+          tier: 'PRO',
+          max_devices: 3, // Lisensi PRO
+          business_name: `Reseller [${order.midtrans_order_id}] - ${order.customer_name}`,
+          customer_name: order.customer_name,
+        });
+      }
 
-    const { error: finalizeError } = await supabase
-      .from('orders')
-      .update({
-        license_id: newLicense.id,
-        paid_at: new Date().toISOString(),
-        midtrans_transaction_id: transaction_id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', order.id);
+      const { data: newLicenses, error: licenseError } = await supabase
+        .from('licenses')
+        .insert(licensesToInsert)
+        .select('*');
 
-    if (finalizeError) throw new Error(finalizeError.message);
+      if (licenseError) throw new Error(licenseError.message);
+      if (!newLicenses || newLicenses.length === 0) {
+        throw new Error('Gagal menyimpan lisensi reseller ke database');
+      }
 
-    try {
-      await sendLicenseEmail({
-        to: order.customer_email,
-        customerName: order.customer_name,
-        licenseKey,
-        tier,
-        businessName: order.business_name,
-      });
-    } catch (emailError: any) {
-      // Lisensi sudah terbit walau email gagal terkirim - jangan gagalkan webhook, cukup log.
-      console.error('Gagal mengirim email lisensi untuk order', order_id, emailError);
+      // Generate a professional Excel file
+      const excelData = newLicenses.map((lic, index) => ({
+        'No': index + 1,
+        'Kode Lisensi': lic.license_key,
+        'Tipe Paket': 'NuansaPos PRO',
+        'Maksimal HP': lic.max_devices,
+        'Pemilik Reseller': lic.customer_name,
+        'Tanggal Rilis': new Date(lic.created_at || Date.now()).toLocaleDateString('id-ID'),
+        'Status Aktivasi': 'Belum Aktif (Siap Pakai)'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      worksheet['!cols'] = [
+        { wch: 6 },   // No
+        { wch: 35 },  // Kode Lisensi
+        { wch: 18 },  // Tipe Paket
+        { wch: 15 },  // Maksimal HP
+        { wch: 25 },  // Pemilik Reseller
+        { wch: 18 },  // Tanggal Rilis
+        { wch: 25 }   // Status Aktivasi
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Daftar Lisensi Reseller');
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+      // Finalize reseller order
+      const { error: finalizeError } = await supabase
+        .from('orders')
+        .update({
+          paid_at: new Date().toISOString(),
+          midtrans_transaction_id: transaction_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', order.id);
+
+      if (finalizeError) throw new Error(finalizeError.message);
+
+      // Send professional reseller email with attachment
+      try {
+        await sendResellerLicenseEmail({
+          to: order.customer_email,
+          customerName: order.customer_name,
+          resellerPackageId: order.business_name || 'RS',
+          qty,
+          licenseKeys,
+          excelBuffer,
+        });
+      } catch (emailError: any) {
+        console.error('Gagal mengirim email lisensi reseller untuk order', order_id, emailError);
+      }
+
+    } else {
+      // Regular customer flow: generate 1 license and send simple email
+      const tier = order.tier as PackageTier;
+      const licenseKey = generateOnlineLicenseKey(tier);
+
+      const { data: newLicense, error: licenseError } = await supabase
+        .from('licenses')
+        .insert({
+          license_key: licenseKey,
+          tier,
+          max_devices: order.max_devices,
+          business_name: order.business_name || order.customer_name,
+          customer_name: order.customer_name,
+        })
+        .select('*')
+        .single();
+
+      if (licenseError) throw new Error(licenseError.message);
+
+      const { error: finalizeError } = await supabase
+        .from('orders')
+        .update({
+          license_id: newLicense.id,
+          paid_at: new Date().toISOString(),
+          midtrans_transaction_id: transaction_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', order.id);
+
+      if (finalizeError) throw new Error(finalizeError.message);
+
+      try {
+        await sendLicenseEmail({
+          to: order.customer_email,
+          customerName: order.customer_name,
+          licenseKey,
+          tier,
+          businessName: order.business_name,
+        });
+      } catch (emailError: any) {
+        console.error('Gagal mengirim email lisensi untuk order', order_id, emailError);
+      }
     }
 
     return NextResponse.json({ message: 'Lisensi berhasil diterbitkan' }, { status: 200 });

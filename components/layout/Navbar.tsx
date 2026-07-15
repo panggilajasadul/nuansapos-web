@@ -57,6 +57,12 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/reseller"
+            className="text-sm font-semibold text-amber-600 hover:text-amber-700 transition-colors duration-150 flex items-center gap-1"
+          >
+            🤝 Reseller
+          </Link>
         </div>
 
         {/* Desktop CTA */}
@@ -93,6 +99,13 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/reseller"
+            className="block text-amber-600 hover:text-amber-700 text-base font-semibold py-2"
+            onClick={() => setMenuOpen(false)}
+          >
+            🤝 Program Reseller
+          </Link>
           <Button
             className="w-full mt-4"
             onClick={() => {

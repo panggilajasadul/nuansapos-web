@@ -240,3 +240,63 @@ export async function deleteLicenseAction(licenseId: string) {
   }
 }
 
+const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+/**
+ * Bulk generates and saves reseller license keys (PRO, 3 devices).
+ */
+export async function generateResellerLicensesAction(data: {
+  qty: number;
+  businessName: string;
+  customerName: string;
+}) {
+  const isAuthed = await checkAuth();
+  if (!isAuthed) return { success: false, error: 'Unauthorized', data: [] };
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return { success: false, error: 'Kredensial Supabase belum dikonfigurasi di server.', data: [] };
+  }
+
+  const crypto = require('crypto');
+
+  try {
+    const licensesToInsert = [];
+    const licenseKeys = [];
+
+    for (let i = 0; i < data.qty; i++) {
+      const bytes = crypto.randomBytes(15);
+      let token = '';
+      for (let j = 0; j < 15; j++) {
+        token += ALPHABET[bytes[j] % ALPHABET.length];
+      }
+      const key = `NUANSA-PRO-${token.substring(0, 5)}-${token.substring(5, 10)}-${token.substring(10, 15)}`;
+      licenseKeys.push(key);
+      licensesToInsert.push({
+        license_key: key,
+        tier: 'PRO',
+        max_devices: 3, // Reseller licenses are PRO
+        business_name: data.businessName,
+        customer_name: data.customerName,
+      });
+    }
+
+    const { data: newLicenses, error } = await supabase
+      .from('licenses')
+      .insert(licensesToInsert)
+      .select('*');
+
+    if (error) throw new Error(error.message);
+
+    return { 
+      success: true, 
+      data: (newLicenses || []).map(lic => lic.license_key) 
+    };
+  } catch (err: any) {
+    console.error('Error generating reseller licenses:', err);
+    return { success: false, error: err.message || 'Gagal generate lisensi reseller', data: [] };
+  }
+}
+
+

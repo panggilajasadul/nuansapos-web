@@ -15,8 +15,9 @@ export async function createSnapTransaction(params: {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  origin?: string;
 }): Promise<{ token: string; redirect_url: string }> {
-  const result = await snap.createTransaction({
+  const payload: any = {
     transaction_details: {
       order_id: params.orderId,
       gross_amount: params.grossAmount,
@@ -26,7 +27,17 @@ export async function createSnapTransaction(params: {
       email: params.customerEmail,
       phone: params.customerPhone,
     },
-  });
+  };
+
+  if (params.origin) {
+    payload.callbacks = {
+      finish: `${params.origin}/beli/status/${params.orderId}`,
+      unfinish: `${params.origin}/beli/status/${params.orderId}`,
+      error: `${params.origin}/beli/status/${params.orderId}`,
+    };
+  }
+
+  const result = await snap.createTransaction(payload);
 
   return { token: result.token, redirect_url: result.redirect_url };
 }

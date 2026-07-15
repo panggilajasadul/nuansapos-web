@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabase } from '@/lib/supabase';
 import { createSnapTransaction } from '@/lib/midtrans';
-import { PACKAGES, isValidTier } from '@/lib/packages';
+import { isValidTier, getPackageDetails } from '@/lib/packages';
 
 export async function POST(request: Request) {
   try {
@@ -52,20 +52,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const pkg = PACKAGES[tier];
+    const pkg = getPackageDetails(tier);
+    if (!pkg) {
+      return NextResponse.json({ success: false, message: 'Paket tidak ditemukan' }, { status: 404 });
+    }
+
     const midtransOrderId = `NUANSA-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
     const { error: insertError } = await supabase.from('orders').insert({
       midtrans_order_id: midtransOrderId,
-      tier,
+      tier: pkg.isReseller ? 'PRO' : tier.toUpperCase(),
       price: pkg.price,
       max_devices: pkg.maxDevices,
       customer_name: cleanName,
       customer_email: cleanEmail,
       customer_whatsapp: cleanWhatsapp,
       customer_address: cleanAddress,
-      business_name: businessName ? String(businessName).trim() : null,
-      business_type: businessType ? String(businessType).trim() : null,
+      business_name: pkg.isReseller ? pkg.id : (businessName ? String(businessName).trim() : null),
+      business_type: pkg.isReseller ? 'reseller' : (businessType ? String(businessType).trim() : null),
       payment_status: 'pending',
     });
 
@@ -73,12 +77,17 @@ export async function POST(request: Request) {
       throw new Error(insertError.message);
     }
 
+    const host = request.headers.get('host') || 'localhost:3000';
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const origin = `${protocol}://${host}`;
+
     const { token, redirect_url } = await createSnapTransaction({
       orderId: midtransOrderId,
       grossAmount: pkg.price,
       customerName: cleanName,
       customerEmail: cleanEmail,
       customerPhone: cleanWhatsapp,
+      origin,
     });
 
     // Simpan snap_token supaya user bisa lanjutkan pembayaran jika popup ditutup

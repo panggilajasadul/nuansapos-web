@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { PACKAGES } from '@/lib/packages'
+import { getPackageDetails } from '@/lib/packages'
 import { SITE_CONFIG } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
 
@@ -26,13 +26,15 @@ type OrderStatus = 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
 
 type OrderData = {
   status: OrderStatus
-  tier: keyof typeof PACKAGES
+  tier: string
   price: number
   email: string
   customerName: string
   orderId: string
   createdAt: string
   paidAt: string | null
+  businessName?: string | null
+  businessType?: string | null
 }
 
 const STEPS = ['Checkout', 'Pembayaran', 'Selesai'] as const
@@ -115,7 +117,11 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
   }, [params.orderId])
 
   const status = order?.status ?? null
-  const pkg = order ? PACKAGES[order.tier] : null
+  const pkg = order
+    ? (order.businessType === 'reseller'
+        ? getPackageDetails(order.businessName || '')
+        : getPackageDetails(order.tier))
+    : null
 
   function copyOrderId() {
     navigator.clipboard.writeText(params.orderId)
@@ -216,24 +222,41 @@ export default function OrderStatusPage({ params }: { params: { orderId: string 
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">Paket</span>
-                    <span className="font-semibold text-slate-800">{pkg.name} (Lifetime)</span>
+                    <span className="font-semibold text-slate-800">{pkg.name}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-400">Total Dibayar</span>
                     <span className="font-semibold text-slate-800">{formatRupiah(order.price)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">Maks. Perangkat</span>
-                    <span className="font-semibold text-slate-800">{pkg.maxDevices} HP</span>
+                    {pkg.isReseller ? (
+                      <>
+                        <span className="text-slate-400">Jumlah Lisensi</span>
+                        <span className="font-semibold text-slate-800">{pkg.qty} Lisensi PRO (3HP)</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-slate-400">Maks. Perangkat</span>
+                        <span className="font-semibold text-slate-800">{pkg.maxDevices} HP</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-left">
                   <Mail className="w-4 h-4 text-brand shrink-0 mt-0.5" />
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Kode lisensi sudah kami kirim ke{' '}
-                    <span className="font-semibold text-slate-800">{order.email}</span>. Cek inbox kamu
-                    (termasuk folder spam/promosi) dalam beberapa menit.
+                    {pkg.isReseller ? (
+                      <>
+                        Daftar <strong>{pkg.qty} kode lisensi</strong> dan file Excel laporan resmi sudah kami kirim ke{' '}
+                        <span className="font-semibold text-slate-800">{order.email}</span>. Cek inbox kamu (termasuk folder spam/promosi).
+                      </>
+                    ) : (
+                      <>
+                        Kode lisensi sudah kami kirim ke{' '}
+                        <span className="font-semibold text-slate-800">{order.email}</span>. Cek inbox kamu (termasuk folder spam/promosi) dalam beberapa menit.
+                      </>
+                    )}
                   </p>
                 </div>
               </motion.div>

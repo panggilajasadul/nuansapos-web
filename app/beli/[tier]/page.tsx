@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Script from 'next/script'
-import { PACKAGES, isValidTier } from '@/lib/packages'
+import { isValidTier, getPackageDetails } from '@/lib/packages'
 import { PRICING_PLANS } from '@/lib/constants'
 import { formatRupiah } from '@/lib/utils'
 import { CheckoutForm } from './CheckoutForm'
@@ -11,8 +11,12 @@ export default function CheckoutPage({ params }: { params: { tier: string } }) {
     notFound()
   }
 
-  const pkg = PACKAGES[tier]
-  const plan = PRICING_PLANS.find((p) => p.id === tier)
+  const pkg = getPackageDetails(tier)
+  if (!pkg) {
+    notFound()
+  }
+
+  const plan = !pkg.isReseller ? PRICING_PLANS.find((p) => p.id === tier) : null
 
   const snapSrc =
     process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
@@ -29,10 +33,10 @@ export default function CheckoutPage({ params }: { params: { tier: string } }) {
       <div className="max-w-3xl mx-auto px-6">
         <div className="text-center mb-10 space-y-2">
           <h1 className="font-display font-bold text-3xl text-slate-900">
-            Beli Lisensi {pkg.name}
+            Beli {pkg.name}
           </h1>
           <p className="text-slate-500">
-            {formatRupiah(pkg.price)} — sekali bayar, pakai selamanya di hingga {pkg.maxDevices} perangkat
+            {formatRupiah(pkg.price)} — {pkg.isReseller ? 'Lisensi grosir siap jual' : `sekali bayar, pakai selamanya di hingga ${pkg.maxDevices} perangkat`}
           </p>
         </div>
 
@@ -47,7 +51,19 @@ export default function CheckoutPage({ params }: { params: { tier: string } }) {
           </ul>
         )}
 
-        <CheckoutForm tier={tier} />
+        {pkg.isReseller && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-5 mb-10 max-w-xl mx-auto space-y-2 text-sm">
+            <p className="font-bold">🤝 Paket Kemitraan Reseller NuansaPos</p>
+            <ul className="space-y-1.5 list-disc list-inside text-slate-700">
+              <li>Berisi <strong>{pkg.qty} Lisensi PRO</strong> (3 perangkat aktif/lisensi)</li>
+              <li>Lisensi tidak ada masa kadaluarsa (lifetime)</li>
+              <li>Kode lisensi & file Excel laporan resmi dikirim via email setelah pembayaran</li>
+              <li>Bebas menentukan harga jual kembali ke UMKM</li>
+            </ul>
+          </div>
+        )}
+
+        <CheckoutForm tier={tier as any} />
       </div>
     </main>
   )

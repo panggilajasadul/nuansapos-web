@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { BUSINESS_TYPES } from '@/lib/constants'
-import type { PackageTier } from '@/lib/packages'
+import type { OrderTier } from '@/lib/packages'
 
 
 const inputClass =
   'w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-brand transition-colors'
 const labelClass = 'block text-xs font-semibold text-slate-600 mb-1.5'
 
-export function CheckoutForm({ tier }: { tier: PackageTier }) {
+export function CheckoutForm({ tier }: { tier: OrderTier }) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)

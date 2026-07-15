@@ -249,7 +249,7 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'BSC',
     name: 'Basic',
-    price: 299000,
+    price: 160000,
     description: 'Lisensi lifetime untuk usaha kecil, 1 perangkat',
     limit: 'Produk & transaksi tidak terbatas · 1 perangkat',
     features: [
@@ -260,14 +260,14 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Bayar sekali, pakai selamanya',
     ],
     notIncluded: ['Multi-user', 'Export Excel & PDF', 'Promo & voucher'],
-    cta: 'Beli Basic — Lifetime',
+    cta: 'Beli Basic — Rp 160rb',
     highlighted: false,
     badge: null,
   },
   {
     id: 'PRO',
     name: 'Pro',
-    price: 599000,
+    price: 180000,
     description: 'Untuk toko yang sedang berkembang, hingga 3 perangkat',
     limit: 'Produk & transaksi tidak terbatas · 3 perangkat',
     features: [
@@ -280,29 +280,30 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Priority support WhatsApp',
     ],
     notIncluded: [],
-    cta: 'Beli Pro — Lifetime',
+    cta: 'Beli Pro — Rp 180rb',
     highlighted: true,
-    badge: 'Paling Populer',
+    badge: 'Paling Populer 🔥',
   },
-  {
-    id: 'PRM',
-    name: 'Premium',
-    price: 999000,
-    description: 'Untuk bisnis yang lebih kompleks, fitur paling lengkap',
-    limit: 'Semua fitur + semua modul bisnis · 3 perangkat',
-    features: [
-      'Semua fitur Pro',
-      'Modul akuntansi double-entry',
-      'Rekonsiliasi bank (upload CSV)',
-      'Import pesanan marketplace',
-      'Offline picking Shopee/Tokopedia',
-      'Dedicated support',
-    ],
-    notIncluded: [],
-    cta: 'Beli Premium — Lifetime',
-    highlighted: false,
-    badge: null,
-  },
+  // Paket Premium dinonaktifkan sementara (disembunyikan dari UI)
+  // {
+  //   id: 'PRM',
+  //   name: 'Premium',
+  //   price: 999000,
+  //   description: 'Untuk bisnis yang lebih kompleks, fitur paling lengkap',
+  //   limit: 'Semua fitur + semua modul bisnis · 3 perangkat',
+  //   features: [
+  //     'Semua fitur Pro',
+  //     'Modul akuntansi double-entry',
+  //     'Rekonsiliasi bank (upload CSV)',
+  //     'Import pesanan marketplace',
+  //     'Offline picking Shopee/Tokopedia',
+  //     'Dedicated support',
+  //   ],
+  //   notIncluded: [],
+  //   cta: 'Beli Premium — Lifetime',
+  //   highlighted: false,
+  //   badge: null,
+  // },
 ]
 
 export type Testimonial = {
@@ -444,6 +445,7 @@ export const FOOTER_LINKS = {
     { href: '#harga', label: 'Harga' },
     { href: '#bisnis', label: 'Tipe Bisnis' },
     { href: '#faq', label: 'FAQ' },
+    { href: '/reseller', label: 'Program Reseller' },
   ],
   legal: [
     { href: '/privacy-policy', label: 'Kebijakan Privasi' },
