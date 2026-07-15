@@ -60,15 +60,17 @@ function MiniResellerCard({ pkg }: { pkg: ResellerPackage }) {
             {pkg.qty} Lisensi PRO · 3HP/lic
           </p>
           {/* Strike-through: anchoring effect */}
-          <p className={cn('text-xs line-through mb-0.5', isLight ? 'text-red-400' : 'text-white/40')}>
-            Normal {formatRupiah(normalTotal)}
-          </p>
+          <div className="flex items-center flex-wrap gap-2 mb-0.5">
+            <span className={cn('text-xs line-through', isLight ? 'text-red-400' : 'text-white/40')}>
+              Normal {formatRupiah(normalTotal)}
+            </span>
+            <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/25 text-emerald-300')}>
+              Hemat {formatRupiahShort(savings)}
+            </span>
+          </div>
           <div className="flex items-baseline gap-2">
             <span className={cn('font-display font-extrabold text-2xl', isLight ? 'text-slate-900' : 'text-white')}>
               {formatRupiah(pkg.modalPrice)}
-            </span>
-            <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full', isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-white/20 text-white')}>
-              Hemat {formatRupiahShort(savings)}
             </span>
           </div>
           <p className={cn('text-xs mt-0.5', isLight ? 'text-slate-400' : 'text-blue-200')}>

@@ -67,19 +67,19 @@ function ResellerCard({ pkg, rank }: { pkg: ResellerPackage; rank: number }) {
             {pkg.qty} Lisensi PRO · 3 perangkat/lic
           </p>
           {/* Strike-through anchor */}
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center flex-wrap gap-2 mb-1">
             <span className={`text-sm line-through ${isLight ? 'text-slate-400' : 'text-white/40'}`}>
               Normal {formatRupiah(normalTotal)}
+            </span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/25 text-emerald-300'
+            }`}>
+              Hemat {fmt(savings)}
             </span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className={`font-display font-extrabold text-3xl ${isLight ? 'text-slate-900' : 'text-white'}`}>
               {formatRupiah(pkg.modalPrice)}
-            </span>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-              isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-white/20 text-white'
-            }`}>
-              Hemat {fmt(savings)}
             </span>
           </div>
           <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-blue-200'}`}>
