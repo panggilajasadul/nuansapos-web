@@ -589,10 +589,13 @@ export default function AdminDashboardClient() {
         };
       })
       .filter(group => {
+        const bizLower = group.businessName.toLowerCase();
+        const custLower = group.customerName.toLowerCase();
         const isResellerName = 
-          group.businessName.toLowerCase().includes('reseller') || 
-          group.customerName.toLowerCase().includes('reseller') || 
-          group.businessName.toLowerCase().includes('mitra');
+          bizLower.includes('reseller') || 
+          custLower.includes('reseller') || 
+          bizLower.includes('mitra') ||
+          ['rs50', 'rs100', 'rs500', 'rs1000'].includes(bizLower);
         return group.totalLicenses >= 2 || isResellerName;
       })
       .sort((a, b) => b.totalLicenses - a.totalLicenses);
