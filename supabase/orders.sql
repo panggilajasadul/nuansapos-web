@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_status TEXT NOT NULL DEFAULT 'pending'
     CHECK (payment_status IN ('pending', 'paid', 'failed', 'expired', 'cancelled')),
   midtrans_transaction_id TEXT,
+  snap_token TEXT,
   license_id UUID REFERENCES licenses(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
