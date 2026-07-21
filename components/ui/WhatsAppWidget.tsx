@@ -14,10 +14,7 @@ export function WhatsAppWidget() {
   const [hasNewNotif, setHasNewNotif] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Hide the widget completely on admin pages
-  if (pathname?.startsWith('/admin')) {
-    return null
-  }
+  const isAdmin = pathname?.startsWith('/admin')
 
   // Trigger typing simulation when the popover opens
   useEffect(() => {
@@ -40,7 +37,7 @@ export function WhatsAppWidget() {
       }
     }, 4000)
     return () => clearTimeout(timer)
-  }, [])
+  }, [isOpen])
 
   // Auto-scroll inside chat dialogue
   useEffect(() => {
@@ -71,6 +68,10 @@ export function WhatsAppWidget() {
     'Halo, mau tanya mengenai Paket PRO/Premium NuansaPos 🚀',
     'Halo Admin, saya ada kendala aktivasi lisensi 🔑',
   ]
+
+  if (isAdmin) {
+    return null
+  }
 
   return (
     <div className="fixed bottom-6 right-6 z-[99] font-sans print:hidden">
