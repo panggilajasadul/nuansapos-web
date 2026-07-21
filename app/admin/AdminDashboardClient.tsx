@@ -36,7 +36,8 @@ import {
   resetActivationsAction,
   deleteLicenseAction,
   listOrdersAction,
-  generateResellerLicensesAction
+  generateResellerLicensesAction,
+  generateBulkLicensesAction
 } from './actions';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -100,7 +101,7 @@ async function computeHMACSHA256(secret: string, message: string): Promise<Uint8
 }
 
 export default function AdminDashboardClient() {
-  const [activeTab, setActiveTab] = useState<'generator' | 'decoder' | 'manager' | 'orders' | 'reseller-gen' | 'reseller-track'>('generator');
+  const [activeTab, setActiveTab] = useState<'generator' | 'decoder' | 'manager' | 'orders' | 'reseller-gen' | 'reseller-track' | 'bulk-gen'>('generator');
   
   // Generator State
   const [menuOpen, setMenuOpen] = useState(false);
@@ -127,6 +128,18 @@ export default function AdminDashboardClient() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [resellerSearch, setResellerSearch] = useState('');
   const [copiedResellerIndex, setCopiedResellerIndex] = useState<number | null>(null);
+
+  // Bulk Generator State
+  const [bulkTier, setBulkTier] = useState<TierCode>('PRO');
+  const [bulkBusinessName, setBulkBusinessName] = useState('Nuansa POS | Aplikasi Kasir');
+  const [bulkQty, setBulkQty] = useState<number>(100);
+  const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
+  const [generatedBulkLicenses, setGeneratedBulkLicenses] = useState<Array<{ key: string; tier: string; businessName: string; createdAt: string }>>([]);
+  const [bulkSearch, setBulkSearch] = useState('');
+  const [bulkPrintData, setBulkPrintData] = useState<Array<{ key: string; tier: string; businessName: string }>>([]);
+  const [copiedAllBulk, setCopiedAllBulk] = useState(false);
+  const [copiedBulkIndex, setCopiedBulkIndex] = useState<number | null>(null);
+  const [bulkViewMode, setBulkViewMode] = useState<'table' | 'receipts'>('table');
 
   // Reseller Tracker State
   const [resellerTrackSearch, setResellerTrackSearch] = useState('');
@@ -161,6 +174,17 @@ export default function AdminDashboardClient() {
     const formatted = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     setReceiptDate(formatted);
   }, [licenseKey]);
+
+  // Clean up bulk print states after printing is completed
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      document.body.classList.remove('bulk-printing');
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
 
   // Load licenses list when manager or reseller-track tab is open
   useEffect(() => {
@@ -539,6 +563,270 @@ export default function AdminDashboardClient() {
     window.open(waUrl, '_blank');
   };
 
+  // Bulk Generator Logic
+  const handleGenerateBulk = async () => {
+    if (bulkQty < 1 || bulkQty > 1000) {
+      alert('Jumlah lisensi minimal 1 dan maksimal 1000.');
+      return;
+    }
+    setIsGeneratingBulk(true);
+    try {
+      const res = await generateBulkLicensesAction({
+        qty: bulkQty,
+        tier: bulkTier,
+        businessName: bulkBusinessName.trim(),
+      });
+
+      if (res.success) {
+        setGeneratedBulkLicenses(res.data);
+        alert(`Berhasil membuat ${bulkQty} lisensi massal!`);
+      } else {
+        alert('Gagal generate lisensi massal: ' + res.error);
+      }
+    } catch (err: any) {
+      alert('Terjadi kesalahan: ' + err.message);
+    } finally {
+      setIsGeneratingBulk(false);
+    }
+  };
+
+  const handleCopyAllBulk = () => {
+    navigator.clipboard.writeText(generatedBulkLicenses.map(l => l.key).join('\n'));
+    setCopiedAllBulk(true);
+    setTimeout(() => setCopiedAllBulk(false), 2000);
+  };
+
+  const handleDownloadBulkExcel = () => {
+    const data = generatedBulkLicenses.map((lic, index) => ({
+      'No': index + 1,
+      'Kode Lisensi': lic.key,
+      'Tipe Paket': TIER_META[lic.tier as TierCode]?.label || lic.tier,
+      'Maksimal HP': lic.tier === 'BSC' ? 1 : 3,
+      'Nama Toko / Bisnis': lic.businessName,
+      'Tanggal Pembuatan': new Date(lic.createdAt).toLocaleDateString('id-ID'),
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    worksheet['!cols'] = [
+      { wch: 6 },   // No
+      { wch: 35 },  // Kode Lisensi
+      { wch: 18 },  // Tipe Paket
+      { wch: 15 },  // Maksimal HP
+      { wch: 25 },  // Nama Toko / Bisnis
+      { wch: 20 }   // Tanggal Pembuatan
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Lisensi Massal');
+    XLSX.writeFile(workbook, `lisensi-bulk-${bulkBusinessName.replace(/\s+/g, '_')}-${bulkQty}.xlsx`);
+  };
+
+  const handleDownloadBulkCSV = () => {
+    const csvHeader = "No,Kode Lisensi,Tipe Paket,Maksimal HP,Nama Toko / Bisnis,Tanggal Pembuatan\n";
+    const csvRows = generatedBulkLicenses.map((lic, index) => {
+      const maxHp = lic.tier === 'BSC' ? 1 : 3;
+      const label = TIER_META[lic.tier as TierCode]?.label || lic.tier;
+      return `${index + 1},${lic.key},${label},${maxHp},${lic.businessName.replace(/,/g, '')},${new Date(lic.createdAt).toLocaleDateString('id-ID')}`;
+    }).join("\n");
+    const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `lisensi-bulk-${bulkBusinessName.replace(/\s+/g, '_')}-${bulkQty}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadBulkPDF = () => {
+    const doc = new jsPDF();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("Daftar Lisensi Massal NuansaPos", 14, 20);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Nama Toko / Bisnis: ${bulkBusinessName}`, 14, 28);
+    doc.text(`Tanggal Generate: ${new Date().toLocaleDateString('id-ID')}`, 14, 34);
+    doc.text(`Jumlah Lisensi: ${bulkQty} Lisensi (${TIER_META[bulkTier]?.label})`, 14, 40);
+    
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, 46, 196, 46);
+    
+    let y = 54;
+    doc.setFontSize(9);
+    generatedBulkLicenses.forEach((lic, index) => {
+      if (y > 280) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text(`${index + 1}.`, 14, y);
+      doc.setFont("courier", "bold");
+      doc.text(lic.key, 25, y);
+      doc.setFont("helvetica", "normal");
+      const label = TIER_META[lic.tier as TierCode]?.label || lic.tier;
+      doc.text(label, 90, y);
+      y += 7;
+    });
+    
+    doc.save(`lisensi-bulk-${bulkBusinessName.replace(/\s+/g, '_')}-${bulkQty}.pdf`);
+  };
+
+  const handlePrintBulk = (licenses: Array<{ key: string; tier: string; businessName: string; createdAt: string }>) => {
+    // Build complete HTML for all receipts inside an iframe
+    const qrSrc = apkQrImage.src;
+    const driveLink = 'https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link';
+
+    const receiptsHtml = licenses.map((lic) => {
+      const maxHp = lic.tier === 'BSC' ? '1 Perangkat' : '3 Perangkat';
+      const label = TIER_META[lic.tier as TierCode]?.label || lic.tier;
+      const now = new Date(lic.createdAt);
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+      return `
+        <div class="receipt-page">
+          <div class="receipt-inner">
+            <div class="top">
+              <div class="header">
+                <div class="biz-name">${lic.businessName ? lic.businessName.toUpperCase() : 'NUANSAPOS'}</div>
+                <div class="subtitle">Bukti Lisensi Aplikasi Offline</div>
+                <div class="date">${dateStr}</div>
+              </div>
+              <div class="divider"></div>
+              <div class="row"><span>ID Perangkat:</span><span class="bold">ONLINE (OTOMATIS)</span></div>
+              <div class="divider"></div>
+              <div class="row"><span class="bold">Tipe Paket:</span><span class="bold">${label}</span></div>
+              <div class="row"><span>Durasi:</span><span>SEUMUR HIDUP</span></div>
+              <div class="row"><span>Maks HP:</span><span>${maxHp}</span></div>
+              <div class="key-box">
+                <div class="key-label">KODE AKTIVASI LISENSI</div>
+                <div class="key-value">${lic.key}</div>
+              </div>
+              <div class="qr-section">
+                <div class="qr-text">
+                  <div class="qr-title">QR DOWNLOAD APLIKASI</div>
+                  <div class="qr-sub">Pindai untuk unduh file APK NuansaPOS.</div>
+                  <div class="qr-manual"><span class="bold">Gagal pindai? Unduh manual:</span><br/><span class="mono">${driveLink}</span></div>
+                </div>
+                <img class="qr-img" src="${qrSrc}" alt="QR APK"/>
+              </div>
+              <div class="divider"></div>
+              <div class="wa-contact">Pertanyaan / Kendala? Hubungi WA: 085210582484</div>
+              <div class="divider"></div>
+              <div class="warning-title">⚠ PERINGATAN</div>
+              <div class="warning-text">Jangan bagikan kode ini kepada orang lain!</div>
+              <div class="warning-sub">Lisensi hanya untuk 1 perangkat resmi Anda.</div>
+              <div class="divider"></div>
+            </div>
+            <div class="footer">
+              <div>Terima kasih atas pembelian lisensi resmi.</div>
+              <div class="bold">NUANSAPOS MANAGEMENT</div>
+              <div>Simpan resi ini sebagai bukti resmi kepemilikan.</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', Courier, monospace; background: #fff; }
+  @page { size: 100mm 150mm; margin: 0; }
+  .receipt-page {
+    width: 100mm;
+    height: 150mm;
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: ${marginY * 3.8}px ${marginX * 3.8}px;
+    background: #fff;
+    color: #000;
+  }
+  .receipt-inner { display: flex; flex-direction: column; justify-content: space-between; height: 100%; font-size: 8pt; line-height: 1.35; }
+  .top { display: flex; flex-direction: column; gap: 3px; }
+  .header { text-align: center; padding-bottom: 4px; }
+  .biz-name { font-size: 10pt; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; }
+  .subtitle { font-size: 7pt; color: #444; }
+  .date { font-size: 6.5pt; color: #666; margin-top: 1px; }
+  .divider { border-top: 1px dashed #000; margin: 3px 0; }
+  .row { display: flex; justify-content: space-between; font-size: 7.5pt; }
+  .bold { font-weight: bold; }
+  .mono { font-family: 'Courier New', Courier, monospace; }
+  .key-box { border: 1px solid #ccc; background: #f5f5f5; text-align: center; padding: 4px 3px; margin: 4px 0; border-radius: 2px; }
+  .key-label { font-size: 6pt; text-transform: uppercase; letter-spacing: 0.06em; color: #666; }
+  .key-value { font-size: 9pt; font-weight: bold; word-break: break-all; }
+  .qr-section { display: flex; align-items: center; gap: 4px; margin: 4px 0; }
+  .qr-text { flex: 1; }
+  .qr-title { font-size: 6.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; }
+  .qr-sub { font-size: 6pt; color: #555; }
+  .qr-manual { font-size: 5.5pt; color: #444; margin-top: 2px; line-height: 1.3; }
+  .qr-manual .mono { font-size: 5pt; word-break: break-all; color: #555; }
+  .qr-img { width: 20mm; height: 20mm; border: 1px solid #ddd; padding: 1px; flex-shrink: 0; }
+  .footer { text-align: center; font-size: 6.5pt; color: #000; padding-top: 2px; line-height: 1.5; }
+  .wa-contact { text-align: center; font-size: 8.5pt; font-weight: bold; color: #000; padding: 3px 0; letter-spacing: 0.01em; }
+  .warning-title { text-align: center; font-size: 7pt; font-weight: bold; color: #000; text-transform: uppercase; letter-spacing: 0.05em; }
+  .warning-text { text-align: center; font-size: 6.5pt; font-weight: 600; color: #000; line-height: 1.35; }
+  .warning-sub { text-align: center; font-size: 6pt; color: #000; line-height: 1.3; }
+  /* Force all text black for thermal printer */
+  * { color: #000 !important; }
+</style>
+</head>
+<body>
+${receiptsHtml}
+</body>
+</html>`;
+
+    // Create hidden iframe, write HTML into it and print
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (!iframeDoc) { document.body.removeChild(iframe); return; }
+
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+
+    // Wait for images to load then print
+    const iframeWin = iframe.contentWindow!;
+    const imgs = iframeDoc.querySelectorAll('img');
+    let loaded = 0;
+    const total = imgs.length;
+
+    const doPrint = () => {
+      iframeWin.focus();
+      iframeWin.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    };
+
+    if (total === 0) {
+      setTimeout(doPrint, 100);
+    } else {
+      imgs.forEach((img) => {
+        if (img.complete) {
+          loaded++;
+          if (loaded === total) doPrint();
+        } else {
+          img.onload = () => { loaded++; if (loaded === total) doPrint(); };
+          img.onerror = () => { loaded++; if (loaded === total) doPrint(); };
+        }
+      });
+    }
+  };
+
   // Process licenses into reseller groups
   const getResellersList = () => {
     const resellerMap: Record<string, {
@@ -632,6 +920,17 @@ export default function AdminDashboardClient() {
               >
                 <Key className="w-3.5 h-3.5" />
                 Generator Lisensi
+              </button>
+              <button
+                onClick={() => setActiveTab('bulk-gen')}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+                  activeTab === 'bulk-gen'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Cpu className="w-3.5 h-3.5" />
+                Generator Massal
               </button>
               <button
                 onClick={() => setActiveTab('decoder')}
@@ -732,6 +1031,20 @@ export default function AdminDashboardClient() {
               >
                 <Key className="w-4 h-4" />
                 Generator Lisensi
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('bulk-gen');
+                  setMenuOpen(false);
+                }}
+                className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2.5 transition-all ${
+                  activeTab === 'bulk-gen'
+                    ? 'bg-brand text-white shadow-md shadow-brand/20'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Cpu className="w-4 h-4" />
+                Generator Massal
               </button>
               <button
                 onClick={() => {
@@ -935,33 +1248,18 @@ export default function AdminDashboardClient() {
                 </div>
 
                 {/* Struk Metadata Inputs */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <Building className="w-3.5 h-3.5 text-slate-505" />
-                      Nama Toko / Bisnis
-                    </label>
-                    <input
-                      type="text"
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      placeholder="Contoh: Laundry Jaya"
-                      className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 text-slate-800 text-sm focus:outline-none focus:border-brand"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-slate-550" />
-                      Nama Pelanggan
-                    </label>
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Contoh: Budi Santoso"
-                      className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 text-slate-800 text-sm focus:outline-none focus:border-brand"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-slate-505" />
+                    Nama Toko / Bisnis
+                  </label>
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Contoh: Laundry Jaya"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-3 text-slate-800 text-sm focus:outline-none focus:border-brand"
+                  />
                 </div>
 
                 {/* Margin Controls */}
@@ -1111,17 +1409,13 @@ export default function AdminDashboardClient() {
                     <div className="text-sm font-bold tracking-wider uppercase">
                       {businessName.toUpperCase() || 'NUANSAPOS'}
                     </div>
-                    <div className="text-[9px] text-slate-700">Bukti Lisensi Aplikasi Offline</div>
-                    <div className="text-[8px] text-slate-600 mt-1">{receiptDate}</div>
+                    <div className="text-[9px] text-black">Bukti Lisensi Aplikasi Offline</div>
+                    <div className="text-[8px] text-black mt-1">{receiptDate}</div>
                   </div>
 
                   <div className="border-t border-dashed border-black my-1.5" />
 
-                  <div className="space-y-0.5 text-[10px]">
-                    <div className="flex justify-between">
-                      <span>Pelanggan:</span>
-                      <span>{customerName || '-'}</span>
-                    </div>
+                  <div className="space-y-0.5 text-[10px] text-black">
                     <div className="flex justify-between">
                       <span>ID Perangkat:</span>
                       <span className="font-bold">
@@ -1132,7 +1426,7 @@ export default function AdminDashboardClient() {
 
                   <div className="border-t border-dashed border-black my-1.5" />
 
-                  <div className="space-y-0.5 text-[10px]">
+                  <div className="space-y-0.5 text-[10px] text-black">
                     <div className="flex justify-between font-bold text-xs">
                       <span>Tipe Paket:</span>
                       <span>{TIER_META[tier].label}</span>
@@ -1148,8 +1442,8 @@ export default function AdminDashboardClient() {
                   </div>
 
                   {/* Struk Key Container */}
-                  <div className="bg-slate-100 border border-slate-300 py-1.5 px-2 text-center my-1.5 rounded">
-                    <span className="text-[8px] text-slate-600 uppercase tracking-wide block mb-0.5">
+                  <div className="bg-slate-100 border border-black py-1.5 px-2 text-center my-1.5 rounded">
+                    <span className="text-[8px] text-black font-semibold uppercase tracking-wide block mb-0.5">
                       KODE AKTIVASI LISENSI
                     </span>
                     <span className="text-xs font-bold font-mono tracking-wide block break-all text-black">
@@ -1167,12 +1461,12 @@ export default function AdminDashboardClient() {
                               <span className="text-[8px] font-bold tracking-wider uppercase">
                                 QR DOWNLOAD APLIKASI
                               </span>
-                              <span className="text-[7px] leading-tight text-slate-700">
+                              <span className="text-[7px] leading-tight text-black">
                                 Pindai untuk unduh file APK NuansaPOS.
                               </span>
                               <div className="text-[7px] leading-tight mt-0.5">
                                 <span className="block font-bold">Gagal pindai? Unduh manual:</span>
-                                <span className="font-mono break-all block mt-0.5 select-all text-slate-700 leading-normal">
+                                <span className="font-mono break-all block mt-0.5 select-all text-black leading-normal">
                                   https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link
                                 </span>
                               </div>
@@ -1183,7 +1477,7 @@ export default function AdminDashboardClient() {
                             <img 
                               src={apkQrImage.src}
                               alt="Download APK QR Code"
-                              className="w-24 h-24 border border-black/30 p-1 bg-white object-contain inline-block"
+                              className="w-24 h-24 border border-black p-1 bg-white object-contain inline-block"
                               style={{ width: '96px', height: '96px', minWidth: '96px', minHeight: '96px' }}
                             />
                           </td>
@@ -1195,9 +1489,16 @@ export default function AdminDashboardClient() {
                   <div className="border-t border-dashed border-black my-1.5" />
                 </div>
 
-                <div className="text-center text-[8px] text-slate-700 pt-1">
+                <div className="text-center text-[8px] text-black pt-1">
+                  <div className="font-bold text-[9px] tracking-wide">Pertanyaan / Kendala?</div>
+                  <div className="font-bold text-[9px]">Hubungi WA: 085210582484</div>
+                  <div className="border-t border-dashed border-black my-1.5" />
+                  <div className="font-bold text-[8px] uppercase tracking-wide">⚠ PERINGATAN</div>
+                  <div className="font-semibold text-[7.5px] leading-tight">Jangan bagikan kode ini kepada orang lain!</div>
+                  <div className="text-[7px] leading-tight text-black">Lisensi hanya untuk 1 perangkat resmi Anda.</div>
+                  <div className="border-t border-dashed border-black my-1.5" />
                   <div>Terima kasih atas pembelian lisensi resmi.</div>
-                  <div className="font-bold mt-1">NUANSAPOS MANAGEMENT</div>
+                  <div className="font-bold mt-0.5">NUANSAPOS MANAGEMENT</div>
                   <div className="mt-0.5">Simpan resi ini sebagai bukti resmi kepemilikan.</div>
                 </div>
 
@@ -1311,6 +1612,413 @@ export default function AdminDashboardClient() {
               </div>
             </div>
           </>
+        )}
+
+        {/* TAB 7: GENERATOR LISENSI MASSAL (BULK) */}
+        {activeTab === 'bulk-gen' && (
+          <div className="lg:col-span-12 space-y-6 print:hidden">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-6 space-y-6"
+            >
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60">
+                <Cpu className="w-5 h-5 text-brand" />
+                <div>
+                  <h2 className="font-display font-semibold text-lg text-slate-900">Generator Lisensi & Resi Massal (Bulk)</h2>
+                  <p className="text-[11px] text-slate-500">Menerbitkan lisensi massal secara instan ke database dan mencetak struk secara massal.</p>
+                </div>
+              </div>
+
+              {/* Form Input */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Pilihan Paket */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">Pilih Paket Lisensi</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(Object.keys(TIER_META) as TierCode[]).map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setBulkTier(key)}
+                        className={`border rounded-xl p-3 flex flex-col items-center justify-center gap-0.5 transition-all text-center ${
+                          bulkTier === key
+                            ? 'border-brand bg-brand/5 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <span className={`font-display text-xs font-bold block ${
+                          bulkTier === key ? 'text-brand' : 'text-slate-800'
+                        }`}>
+                          {key}
+                        </span>
+                        <span className="text-[9px] text-slate-500 block">
+                          {TIER_META[key].max}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Nama Toko / Bisnis */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">Nama Toko / Bisnis Utama</label>
+                  <input
+                    type="text"
+                    value={bulkBusinessName}
+                    onChange={(e) => setBulkBusinessName(e.target.value)}
+                    placeholder="Contoh: Nuansa POS"
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                {/* Jumlah Lisensi */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 block">Jumlah Lisensi (1 s.d 1000)</label>
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={bulkQty || ''}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setBulkQty(isNaN(val) ? 0 : val);
+                      }}
+                      className="w-full bg-white border border-slate-300 rounded-xl py-2.5 px-4 text-slate-800 text-sm focus:outline-none focus:border-brand"
+                    />
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {[10, 50, 100, 500, 1000].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setBulkQty(preset)}
+                          className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
+                            bulkQty === preset
+                              ? 'bg-brand/10 border-brand text-brand'
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {preset} Lisensi
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerateBulk}
+                disabled={isGeneratingBulk}
+                className="w-full bg-brand hover:bg-brand-dark text-white rounded-xl py-3.5 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-brand/20 disabled:opacity-50"
+              >
+                {isGeneratingBulk ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Key className="w-4 h-4" />
+                    <span>Generate & Daftarkan Lisensi Massal</span>
+                  </>
+                )}
+              </button>
+
+              {/* Action & Result Section */}
+              {generatedBulkLicenses.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6 pt-4 border-t border-slate-200/60"
+                >
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-sm font-bold text-emerald-800">
+                        Berhasil Menerbitkan {generatedBulkLicenses.length} Lisensi!
+                      </h4>
+                      <p className="text-xs text-emerald-600 leading-relaxed mt-0.5">
+                        Semua lisensi baru ({bulkTier}) telah terdaftar di database Supabase.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleCopyAllBulk}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        {copiedAllBulk ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedAllBulk ? 'Tersalin!' : 'Salin Semua'}
+                      </button>
+                      <button
+                        onClick={handleDownloadBulkExcel}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                        Excel
+                      </button>
+                      <button
+                        onClick={handleDownloadBulkCSV}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-blue-650" />
+                        CSV
+                      </button>
+                      <button
+                        onClick={handleDownloadBulkPDF}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-red-650" />
+                        PDF
+                      </button>
+                      <button
+                        onClick={() => handlePrintBulk(generatedBulkLicenses)}
+                        className="bg-brand hover:bg-brand-dark text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-md shadow-brand/20 ml-2"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        Cetak Semua Resi (Bulk)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* List / Searchable Table of licenses */}
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        {bulkViewMode === 'table' ? 'Daftar Lisensi Yang Baru Dibuat' : 'Pratinjau Resi Siap Cetak'}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        {/* Search Input */}
+                        <input
+                          type="text"
+                          placeholder="Cari kode..."
+                          value={bulkSearch}
+                          onChange={(e) => setBulkSearch(e.target.value)}
+                          className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-brand w-full sm:w-40 text-slate-850"
+                        />
+                        
+                        {/* View Mode Toggle */}
+                        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => setBulkViewMode('table')}
+                            className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                              bulkViewMode === 'table'
+                                ? 'bg-white text-brand shadow-sm font-bold'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Format Tabel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBulkViewMode('receipts')}
+                            className={`flex-1 sm:flex-none px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                              bulkViewMode === 'receipts'
+                                ? 'bg-white text-brand shadow-sm font-bold'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Resi Siap Cetak
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {bulkViewMode === 'table' ? (
+                      <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white max-h-[400px] overflow-y-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                              <th className="py-2.5 px-4 w-12">No</th>
+                              <th className="py-2.5 px-4">Kode Lisensi</th>
+                              <th className="py-2.5 px-4">Tipe</th>
+                              <th className="py-2.5 px-4">Maks HP</th>
+                              <th className="py-2.5 px-4 w-16 text-center">Salin</th>
+                              <th className="py-2.5 px-4 w-16 text-center">Cetak</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-mono">
+                            {generatedBulkLicenses
+                              .filter(lic => lic.key.toLowerCase().includes(bulkSearch.toLowerCase()))
+                              .map((lic, index) => (
+                                <tr key={lic.key} className="hover:bg-slate-50">
+                                  <td className="py-2 px-4 text-slate-500">{index + 1}</td>
+                                  <td className="py-2 px-4 font-bold text-slate-800 select-all">{lic.key}</td>
+                                  <td className="py-2 px-4 text-slate-600 font-sans">{TIER_META[lic.tier as TierCode]?.label || lic.tier}</td>
+                                  <td className="py-2 px-4 text-slate-600 font-sans">{lic.tier === 'BSC' ? '1 Perangkat' : '3 Perangkat'}</td>
+                                  <td className="py-2 px-4 text-center">
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(lic.key);
+                                        setCopiedBulkIndex(index);
+                                        setTimeout(() => setCopiedBulkIndex(null), 2000);
+                                      }}
+                                      className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition-colors"
+                                    >
+                                      {copiedBulkIndex === index ? (
+                                        <Check className="w-3.5 h-3.5 text-emerald-600 inline" />
+                                      ) : (
+                                        <Copy className="w-3.5 h-3.5 inline" />
+                                      )}
+                                    </button>
+                                  </td>
+                                  <td className="py-2 px-4 text-center">
+                                    <button
+                                      onClick={() => handlePrintBulk([lic])}
+                                      className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-brand transition-colors"
+                                      title="Cetak resi lisensi ini saja"
+                                    >
+                                      <Printer className="w-3.5 h-3.5 inline" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center bg-slate-50 border border-slate-200 p-6 rounded-2xl max-h-[600px] overflow-y-auto">
+                        {generatedBulkLicenses
+                          .filter(lic => lic.key.toLowerCase().includes(bulkSearch.toLowerCase()))
+                          .map((lic, index) => {
+                            const maxHp = lic.tier === 'BSC' ? '1 Perangkat' : '3 Perangkat';
+                            const label = TIER_META[lic.tier as TierCode]?.label || lic.tier;
+                            const dateStr = new Date(lic.createdAt).toLocaleDateString('id-ID') + ' ' + new Date(lic.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+                            return (
+                              <div 
+                                key={lic.key + '-' + index}
+                                className="bg-white text-black font-mono w-[300px] h-[450px] shadow-lg relative border border-slate-200 rounded-md flex flex-col justify-between p-4 overflow-hidden text-[9px] select-none"
+                                style={{ 
+                                  paddingLeft: `${marginX * 3.0}px`,
+                                  paddingRight: `${marginX * 3.0}px`,
+                                  paddingTop: `${marginY * 3.0}px`,
+                                  paddingBottom: `${marginY * 3.0}px`,
+                                }}
+                              >
+                                {/* Jagged Edge Simulation */}
+                                <div className="absolute top-0 inset-x-0 h-2 bg-repeat-x pointer-events-none"
+                                  style={{
+                                    backgroundImage: `linear-gradient(-45deg, #F8FAFC 4px, transparent 0), linear-gradient(45deg, #F8FAFC 4px, transparent 0)`,
+                                    backgroundSize: '8px 8px'
+                                  }}
+                                />
+
+                                <div className="flex flex-col gap-1 w-full justify-between h-full">
+                                  <div className="flex flex-col gap-1 w-full">
+                                    {/* Header */}
+                                    <div className="text-center pt-2 pb-1">
+                                      <div className="text-xs font-bold tracking-wider uppercase text-black">
+                                        {lic.businessName.toUpperCase() || 'NUANSAPOS'}
+                                      </div>
+                                      <div className="text-[8px] text-black font-sans">Bukti Lisensi Aplikasi Offline</div>
+                                      <div className="text-[7px] text-black mt-0.5">{dateStr}</div>
+                                    </div>
+
+                                    <div className="border-t border-dashed border-black my-1" />
+
+                                    {/* Metadata */}
+                                    <div className="space-y-0.5 text-[8.5px] text-black">
+                                      <div className="flex justify-between">
+                                        <span>ID Perangkat:</span>
+                                        <span className="font-bold">ONLINE (OTOMATIS)</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="border-t border-dashed border-black my-1" />
+
+                                    {/* Package Info */}
+                                    <div className="space-y-0.5 text-[8.5px] text-black">
+                                      <div className="flex justify-between font-bold text-[9px]">
+                                        <span>Tipe Paket:</span>
+                                        <span>{label}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Durasi:</span>
+                                        <span>SEUMUR HIDUP</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Maks HP:</span>
+                                        <span>{maxHp}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Key Box */}
+                                    <div className="bg-slate-50 border border-black py-1.5 px-2 text-center my-1 rounded">
+                                      <span className="text-[7px] text-black font-semibold uppercase tracking-wide block mb-0.5">
+                                        KODE AKTIVASI LISENSI
+                                      </span>
+                                      <span className="text-[9.5px] font-bold font-mono tracking-wide block break-all text-black leading-tight select-all">
+                                        {lic.key}
+                                      </span>
+                                    </div>
+
+                                    {/* QR Code */}
+                                    <table className="w-full mt-1.5 mb-1 text-left" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                                      <tbody>
+                                        <tr>
+                                          <td className="align-middle pr-1" style={{ width: '58%', verticalAlign: 'middle' }}>
+                                            <div className="flex flex-col gap-0.5 text-black">
+                                              <span className="text-[7px] font-bold tracking-wider uppercase text-black">
+                                                QR DOWNLOAD APK
+                                              </span>
+                                              <span className="text-[6px] leading-tight text-black">
+                                                Pindai untuk unduh file APK NuansaPOS.
+                                              </span>
+                                              <div className="text-[6px] leading-tight mt-0.5">
+                                                <span className="block font-bold">Gagal pindai? Unduh manual:</span>
+                                                <span className="font-mono break-all block mt-0.5 select-all text-black leading-normal">
+                                                  https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </td>
+                                          <td className="align-middle text-right" style={{ width: '42%', verticalAlign: 'middle', textAlign: 'right' }}>
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img 
+                                              src={apkQrImage.src}
+                                              alt="Download APK QR Code"
+                                              className="w-14 h-14 border border-black p-0.5 bg-white object-contain inline-block"
+                                              style={{ width: '56px', height: '56px' }}
+                                            />
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+
+                                    <div className="border-t border-dashed border-black my-1" />
+                                  </div>
+
+                                  {/* Footer */}
+                                  <div className="text-center text-[7px] text-black pt-0.5 pb-2">
+                                    <div className="font-bold text-[7.5px] text-black">Pertanyaan / Kendala?</div>
+                                    <div className="font-bold text-[7.5px] text-black">Hubungi WA: 085210582484</div>
+                                    <div className="border-t border-dashed border-black my-1" />
+                                    <div className="font-bold text-[7px] uppercase tracking-wide">⚠ PERINGATAN</div>
+                                    <div className="font-semibold text-[6.5px] leading-tight">Jangan bagikan kode ini kepada orang lain!</div>
+                                    <div className="text-[6px] leading-tight">Lisensi hanya untuk 1 perangkat resmi Anda.</div>
+                                    <div className="border-t border-dashed border-black my-1" />
+                                    <div className="font-bold">NUANSAPOS MANAGEMENT</div>
+                                    <div className="mt-0.5 text-[6px]">Simpan resi ini sebagai bukti resmi.</div>
+                                  </div>
+                                </div>
+
+                                {/* Jagged Edge Simulation Bottom */}
+                                <div className="absolute bottom-0 inset-x-0 h-2 bg-repeat-x pointer-events-none"
+                                  style={{
+                                    backgroundImage: `linear-gradient(-45deg, transparent 4px, #F8FAFC 0), linear-gradient(45deg, transparent 4px, #F8FAFC 0)`,
+                                    backgroundSize: '8px 8px'
+                                  }}
+                                />
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          </div>
         )}
 
         {/* TAB 2: DECODER LISENSI */}
@@ -2324,6 +3032,131 @@ export default function AdminDashboardClient() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* BULK PRINT RECEIPT CONTAINER (Printed only during bulk print mode) */}
+      {bulkPrintData.length > 0 && (
+        <div id="bulk-print-container">
+          {bulkPrintData.map((lic, index) => {
+            const maxHp = lic.tier === 'BSC' ? '1 Perangkat' : '3 Perangkat';
+            const label = TIER_META[lic.tier as TierCode]?.label || lic.tier;
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            return (
+              <div 
+                key={lic.key + '-' + index}
+                className="bulk-receipt-page bg-white text-black font-mono"
+                style={{ 
+                  fontSize: '11px', 
+                  lineHeight: '1.4',
+                  boxSizing: 'border-box',
+                  width: '100mm',
+                  height: '150mm',
+                  paddingTop: `${marginY * 3.8}px`,
+                  paddingBottom: `${marginY * 3.8}px`,
+                  paddingLeft: `${marginX * 3.8}px`,
+                  paddingRight: `${marginX * 3.8}px`,
+                  pageBreakAfter: 'always',
+                  breakAfter: 'page'
+                }}
+              >
+                <div className="flex flex-col gap-1 w-full h-full justify-between">
+                  <div className="flex flex-col gap-1 w-full">
+                    {/* Header */}
+                    <div className="text-center pt-4 pb-2">
+                      <div className="text-sm font-bold tracking-wider uppercase">
+                        {lic.businessName.toUpperCase() || 'NUANSAPOS'}
+                      </div>
+                      <div className="text-[9px] text-slate-700">Bukti Lisensi Aplikasi Offline</div>
+                      <div className="text-[8px] text-slate-600 mt-1">{dateStr}</div>
+                    </div>
+
+                    <div className="border-t border-dashed border-black my-1.5" />
+
+                    {/* Metadata */}
+                    <div className="space-y-0.5 text-[10px]">
+                      <div className="flex justify-between">
+                        <span>ID Perangkat:</span>
+                        <span className="font-bold">ONLINE (OTOMATIS)</span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-dashed border-black my-1.5" />
+
+                    {/* Package Info */}
+                    <div className="space-y-0.5 text-[10px]">
+                      <div className="flex justify-between font-bold text-xs">
+                        <span>Tipe Paket:</span>
+                        <span>{label}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Durasi:</span>
+                        <span>SEUMUR HIDUP (LIFETIME)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Maks HP:</span>
+                        <span>{maxHp}</span>
+                      </div>
+                    </div>
+
+                    {/* Key Box */}
+                    <div className="bg-slate-100 border border-slate-300 py-1.5 px-2 text-center my-1.5 rounded">
+                      <span className="text-[8px] text-slate-600 uppercase tracking-wide block mb-0.5">
+                        KODE AKTIVASI LISENSI
+                      </span>
+                      <span className="text-xs font-bold font-mono tracking-wide block break-all text-black">
+                        {lic.key}
+                      </span>
+                    </div>
+
+                    {/* QR Code */}
+                    <table className="w-full mt-3 mb-2 text-left" style={{ tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr>
+                          <td className="align-middle pr-1.5" style={{ width: '62%', verticalAlign: 'middle' }}>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[8px] font-bold tracking-wider uppercase">
+                                QR DOWNLOAD APLIKASI
+                              </span>
+                              <span className="text-[7px] leading-tight text-slate-700">
+                                Pindai untuk unduh file APK NuansaPOS.
+                              </span>
+                              <div className="text-[7px] leading-tight mt-0.5">
+                                <span className="block font-bold">Gagal pindai? Unduh manual:</span>
+                                <span className="font-mono break-all block mt-0.5 select-all text-slate-700 leading-normal">
+                                  https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="align-middle text-right" style={{ width: '38%', verticalAlign: 'middle', textAlign: 'right' }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                              src={apkQrImage.src}
+                              alt="Download APK QR Code"
+                              className="w-24 h-24 border border-black/30 p-1 bg-white object-contain inline-block"
+                              style={{ width: '96px', height: '96px', minWidth: '96px', minHeight: '96px' }}
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div className="border-t border-dashed border-black my-1.5" />
+                  </div>
+
+                  {/* Footer */}
+                  <div className="text-center text-[8px] text-slate-700 pt-1 pb-4">
+                    <div>Terima kasih atas pembelian lisensi resmi.</div>
+                    <div className="font-bold mt-1">NUANSAPOS MANAGEMENT</div>
+                    <div className="mt-0.5 font-semibold text-slate-800">Pertanyaan / Kendala? Hubungi WA: 085210582484</div>
+                    <div className="mt-0.5">Simpan resi ini sebagai bukti resmi kepemilikan.</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
       </main>
 
       {/* Dynamic print-media page margin style override */}
@@ -2339,6 +3172,15 @@ export default function AdminDashboardClient() {
             height: ${150 - (2 * marginY)}mm !important;
             padding: 0 !important;
             box-sizing: border-box !important;
+          }
+          .bulk-receipt-page {
+            margin: ${marginY}mm ${marginX}mm !important;
+            width: ${100 - (2 * marginX)}mm !important;
+            height: ${150 - (2 * marginY)}mm !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+            page-break-after: always;
+            break-after: page;
           }
         }
       `}} />

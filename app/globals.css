@@ -138,9 +138,36 @@
     display: none !important;
   }
 
+  /* Rules for bulk printing */
+  body.bulk-printing header,
+  body.bulk-printing main,
+  body.bulk-printing footer {
+    display: none !important;
+  }
+
+  body.bulk-printing #bulk-print-container {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .bulk-receipt-page {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    page-break-after: always;
+    break-after: page;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
   @page {
     size: 100mm 150mm;
     margin: 0mm;
   }
+}
+
+#bulk-print-container {
+  display: none;
 }
 

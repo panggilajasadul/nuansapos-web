@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { createToken, verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import crypto from 'crypto';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'nuansaposadmin123';
 
@@ -296,6 +297,68 @@ export async function generateResellerLicensesAction(data: {
   } catch (err: any) {
     console.error('Error generating reseller licenses:', err);
     return { success: false, error: err.message || 'Gagal generate lisensi reseller', data: [] };
+  }
+}
+
+/**
+ * Bulk generates and saves license keys for any package/tier and business name.
+ */
+export async function generateBulkLicensesAction(data: {
+  qty: number;
+  tier: string;
+  businessName: string;
+}) {
+  const isAuthed = await checkAuth();
+  if (!isAuthed) return { success: false, error: 'Unauthorized', data: [] };
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return { success: false, error: 'Kredensial Supabase belum dikonfigurasi di server.', data: [] };
+  }
+
+  const maxDevices = data.tier === 'BSC' ? 1 : 3;
+
+  try {
+    const licensesToInsert = [];
+    const licenseKeys = [];
+
+    for (let i = 0; i < data.qty; i++) {
+      const bytes = crypto.randomBytes(15);
+      let token = '';
+      for (let j = 0; j < 15; j++) {
+        token += ALPHABET[bytes[j] % ALPHABET.length];
+      }
+      const key = `NUANSA-${data.tier}-${token.substring(0, 5)}-${token.substring(5, 10)}-${token.substring(10, 15)}`;
+      licenseKeys.push(key);
+      licensesToInsert.push({
+        license_key: key,
+        tier: data.tier,
+        max_devices: maxDevices,
+        business_name: data.businessName,
+        customer_name: '', // Bulk is not tied to a specific customer name
+      });
+    }
+
+    const { data: newLicenses, error } = await supabase
+      .from('licenses')
+      .insert(licensesToInsert)
+      .select('*');
+
+    if (error) throw new Error(error.message);
+
+    return { 
+      success: true, 
+      data: (newLicenses || []).map(lic => ({
+        key: lic.license_key,
+        tier: lic.tier,
+        businessName: lic.business_name || '',
+        createdAt: lic.created_at
+      })) 
+    };
+  } catch (err: any) {
+    console.error('Error generating bulk licenses:', err);
+    return { success: false, error: err.message || 'Gagal generate lisensi bulk', data: [] };
   }
 }
 
