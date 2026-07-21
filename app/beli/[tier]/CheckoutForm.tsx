@@ -103,7 +103,10 @@ export function CheckoutForm({ tier }: { tier: OrderTier }) {
               className={inputClass}
               placeholder="email@contoh.com"
             />
-            <p className="text-[11px] text-slate-400 mt-1">Kode lisensi akan dikirim ke email ini.</p>
+            <p className="text-[11px] text-slate-500 mt-1 leading-normal font-medium">
+              📧 Kunci lisensi & link download file APK aplikasi akan dikirim instan secara otomatis ke email ini setelah pembayaran lunas.
+              <span className="block text-amber-600 font-semibold mt-0.5">⚠️ Catatan: Jika tidak masuk ke kotak masuk utama, harap cek folder Spam atau Promosi.</span>
+            </p>
           </div>
         </div>
 

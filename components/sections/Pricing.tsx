@@ -133,6 +133,15 @@ export function Pricing() {
           <p className="text-slate-600 text-lg leading-relaxed">
             Tidak ada biaya bulanan tersembunyi. Lisensi berbayar sekali bayar, pakai selamanya.
           </p>
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-sm text-slate-700 max-w-xl mx-auto space-y-1">
+            <p className="font-semibold text-slate-900 flex items-center justify-center gap-1.5">
+              <span>📧 Aplikasi & Kunci Lisensi Dikirim Instan Via Email</span>
+            </p>
+            <p className="text-xs text-slate-500">
+              Setelah pembayaran berhasil, link download file aplikasi beserta kode lisensi akan otomatis masuk ke email Anda. 
+              <span className="block text-amber-600 font-medium mt-1">⚠️ Jika tidak ada di kotak masuk utama, mohon cek folder <strong>Spam</strong> atau <strong>Promosi</strong>.</span>
+            </p>
+          </div>
         </div>
 
         {/* Tab toggle */}
