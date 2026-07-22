@@ -8,7 +8,7 @@ export const SITE_CONFIG = {
   playStoreUrl: 'https://drive.google.com/drive/folders/17lz4xdSkDQVvDkdp7ukHRVN8g-S7WaDu?usp=drive_link',
   whatsappNumber: '6281389709847',
   whatsappMessage: 'Halo, saya tertarik dengan NuansaPos. Boleh minta demo?',
-  email: 'nuansapos.noreply@gmail.com',
+  email: 'support.nuansapos@gmail.com',
 }
 
 export const STATS = [
