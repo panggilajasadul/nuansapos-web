@@ -65,7 +65,30 @@ export default function PrivacyPolicyPage() {
 
             <section className="space-y-3">
               <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
-                4. Keamanan Akun & Kredensial
+                4. Izin Perangkat (Device Permissions)
+              </h2>
+              <p>
+                Untuk menjalankan fungsinya secara optimal, aplikasi kami meminta beberapa izin perangkat yang digunakan secara ketat dan aman demi kenyamanan operasional kasir Anda:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                <li>
+                  <strong className="text-slate-900">Kamera:</strong> Digunakan secara eksklusif untuk memindai barcode produk secara cepat menggunakan kamera handphone saat melakukan transaksi kasir.
+                </li>
+                <li>
+                  <strong className="text-slate-900">Bluetooth &amp; Lokasi:</strong> Digunakan untuk mendeteksi, menghubungkan, dan mencetak struk belanja ke printer thermal Bluetooth.
+                </li>
+                <li>
+                  <strong className="text-slate-900">Penyimpanan:</strong> Digunakan untuk menyimpan file ekspor laporan transaksi (Excel/CSV) dan file cadangan (backup) database secara lokal di folder unduhan perangkat.
+                </li>
+                <li>
+                  <strong className="text-slate-900">Notifikasi:</strong> Digunakan untuk memberikan info penting seperti status countdown trial, pengingat backup data, atau pembaruan sistem.
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
+                5. Keamanan Akun & Kredensial
               </h2>
               <p>
                 PIN akses masuk serta kredensial akun pengguna disimpan menggunakan enkripsi tingkat tinggi langsung di dalam perangkat lokal Anda. Hanya pengguna fisik yang mengetahui PIN yang tepat yang dapat mengakses aplikasi.
@@ -74,7 +97,7 @@ export default function PrivacyPolicyPage() {
 
             <section className="space-y-3">
               <h2 className="font-display font-bold text-lg md:text-xl text-slate-900">
-                5. Hubungi Kami
+                6. Hubungi Kami
               </h2>
               <p>
                 Jika Anda memiliki kekhawatiran, pertanyaan, atau tanggapan terkait kebijakan privasi kami, silakan hubungi tim dukungan kami melalui surat elektronik resmi di{' '}
